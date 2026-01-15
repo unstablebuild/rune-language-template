@@ -144,7 +144,6 @@ just=git@github.com:IndianBoy42/tree-sitter-just.git
 kcl=git@github.com:kcl-lang/tree-sitter-kcl.git
 kconfig=git@github.com:tree-sitter-grammars/tree-sitter-kconfig.git
 kdl=git@github.com:tree-sitter-grammars/tree-sitter-kdl.git
-kitty=git@github.com:OXY2DEV/tree-sitter-kitty.git
 kos=git@github.com:kos-lang/tree-sitter-kos.git
 kotlin=git@github.com:fwcd/tree-sitter-kotlin.git
 koto=git@github.com:koto-lang/tree-sitter-koto.git
@@ -327,10 +326,98 @@ ziggy=git@github.com:kristoff-it/ziggy.git
 ziggy_schema=git@github.com:kristoff-it/ziggy.git
 zsh=git@github.com:georgeharker/tree-sitter-zsh.git"
 
-echo "$LANG_REPOS" | while IFS='=' read -r lang repo; do
+SUCCEEDED=""
+FAILED_NOTFOUND=""
+FAILED_CLEAN=""
+FAILED_MAKE=""
+FAILED_BLUECTL=""
+FAILED_DIST=""
+TOTAL=0
+SUCCESS_COUNT=0
+FAIL_COUNT=0
+
+IFS=$'\n'
+for line in $LANG_REPOS; do
+    lang="${line%%=*}"
+    repo="${line#*=}"
+
     echo "====> PROCESSING $lang -> $repo"
 
     export LANG=$lang
     export REPO=$repo
-    make clean && make && bluectl package create -d notes="Rune language package for the $lang programming language." $lang && make dist
+
+    if ! make clean; then
+        echo "FAILED: make clean for $lang"
+        FAILED_CLEAN="$FAILED_CLEAN $lang"
+        FAIL_COUNT=$((FAIL_COUNT + 1))
+        continue
+    fi
+
+    if ! make; then
+        echo "FAILED: make for $lang"
+        FAILED_MAKE="$FAILED_MAKE $lang"
+        FAIL_COUNT=$((FAIL_COUNT + 1))
+        continue
+    fi
+
+    if ! bluectl package create -d notes="Rune language package for the $lang programming language." $lang; then
+        echo "FAILED: bluectl package create for $lang"
+        FAILED_BLUECTL="$FAILED_BLUECTL $lang"
+        FAIL_COUNT=$((FAIL_COUNT + 1))
+        continue
+    fi
+
+    if ! make dist; then
+        echo "FAILED: make dist for $lang"
+        FAILED_DIST="$FAILED_DIST $lang"
+        FAIL_COUNT=$((FAIL_COUNT + 1))
+        continue
+    fi
+
+    echo "SUCCESS: $lang"
+    SUCCEEDED="$SUCCEEDED $lang"
+    SUCCESS_COUNT=$((SUCCESS_COUNT + 1))
 done
+unset IFS
+
+# Print summary
+echo ""
+echo "==========================================="
+echo " BUILD SUMMARY"
+echo "==========================================="
+echo "Total:     $TOTAL"
+echo "Succeeded: $SUCCESS_COUNT"
+echo "Failed:    $FAIL_COUNT"
+echo ""
+
+if [ -n "$SUCCEEDED" ]; then
+    echo "✓ Succeeded:$SUCCEEDED"
+fi
+
+if [ -n "$FAILED_NOTFOUND" ]; then
+    echo "✗ Failed (repo not found):$FAILED_NOTFOUND"
+fi
+
+if [ -n "$FAILED_CLEAN" ]; then
+    echo "✗ Failed (make clean):$FAILED_CLEAN"
+fi
+
+if [ -n "$FAILED_MAKE" ]; then
+    echo "✗ Failed (make):$FAILED_MAKE"
+fi
+
+if [ -n "$FAILED_BLUECTL" ]; then
+    echo "✗ Failed (bluectl):$FAILED_BLUECTL"
+fi
+
+if [ -n "$FAILED_DIST" ]; then
+    echo "✗ Failed (make dist):$FAILED_DIST"
+fi
+
+echo ""
+echo "==========================================="
+
+# Exit with error if any failures
+if [ "$FAIL_COUNT" -gt 0 ]; then
+    exit 1
+fi
