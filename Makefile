@@ -1,0 +1,32 @@
+LANG=rust
+SRC=$(LANG) tools tree-sitter-$(LANG)
+LIB=pkg/lib/tree-sitter.so pkg/lib/highlights.scm pkg/lib/folds.scm pkg/lib/indents.scm
+TAR=$(LANG).tar.gz
+CC=gcc
+
+.PHONY: dist clean
+default: $(TAR)
+
+$(SRC):
+    # create dir if not created already with a repository
+    # to compile standard tools.
+	mkdir -p $(LANG) tools
+	-git submodule add git@github.com:tree-sitter/tree-sitter-$(LANG).git
+	@mkdir -p pkg/bin pkg/lib $(LANG)
+
+$(LIB): $(SRC)
+	cd tree-sitter-$(LANG) && $(CC) -o parser.so -I./src src/*.c -Os -bundle -arch arm64 -arch x86_64
+	cp tree-sitter-$(LANG)/parser.so pkg/lib/tree-sitter.so
+	cp tree-sitter-$(LANG)/queries/tags.scm tree-sitter-$(LANG)/queries/highlights.scm pkg/lib
+	cp nvim-treesitter/runtime/queries/$(LANG)/indents.scm nvim-treesitter/runtime/queries/$(LANG)/folds.scm pkg/lib
+	cp src/*.scm pkg/lib
+
+$(TAR): $(LIB)
+	cd pkg && tar -czvf ../$(LANG).tar.gz .
+
+dist: $(TAR)
+	@ ./dist.sh
+
+clean:
+	rm -rf $(TAR)
+	rm -rf $(LIB)
