@@ -18,7 +18,7 @@ $(LIB): $(SRC)
 	cd tree-sitter-$(LANG) && $(CC) -o parser.so -I./src src/*.c -Os -bundle -arch arm64 -arch x86_64
 	cp tree-sitter-$(LANG)/parser.so pkg/lib/tree-sitter.so
 	cp tree-sitter-$(LANG)/queries/highlights.scm pkg/lib
-	-cp tree-sitter-$(LANG)/queries/tags.scm
+	-cp tree-sitter-$(LANG)/queries/tags.scm pkg/lib
 	-cp nvim-treesitter/runtime/queries/$(LANG)/indents.scm pkg/lib
 	-cp nvim-treesitter/runtime/queries/$(LANG)/folds.scm pkg/lib
 	cp src/*.scm pkg/lib
@@ -30,5 +30,5 @@ dist: $(TAR)
 	@ ./dist.sh
 
 clean:
-	rm -rf $(TAR)
+	rm -rf *.tar.gz
 	rm -rf $(LIB)
