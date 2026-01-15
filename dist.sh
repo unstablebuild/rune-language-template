@@ -15,6 +15,11 @@ if [[ -z "${BLUE_PGP_KEY}" ]]; then
 	exit 1;
 fi
 
+if [[ -z "${BLUE_PGP_PASSPHRASE}" ]]; then
+    echo "BLUE_PGP_PASSPHRASE is not set. See bluectl release upload -h for help."
+	exit 1;
+fi
+
 if [[ -z "${LANG}" ]]; then
     echo "LANG is not set to a valid bluectl package"
 	exit 1;
@@ -39,6 +44,7 @@ blue_release_dist() {
 		-d git-log="$GIT_LOG" \
 		-y \
 		-k $BLUE_PGP_KEY \
+		-p $BLUE_PGP_PASSPHRASE \
 		-r $BLUE_PGP_KEYRING $LANG $BLUE_RELEASE_TAG $BLUE_RELEASE_TAR
 }
 

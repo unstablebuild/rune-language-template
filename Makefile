@@ -1,4 +1,5 @@
 LANG ?= rust
+REPO ?= github.com:tree-sitter/tree-sitter-$(LANG)
 SRC=$(LANG) tools tree-sitter-$(LANG)
 LIB=pkg/lib/tree-sitter.so pkg/lib/highlights.scm
 TAR=$(LANG).tar.gz
@@ -11,7 +12,7 @@ $(SRC):
     # create dir if not created already with a repository
     # to compile standard tools.
 	mkdir -p $(LANG) tools
-	-git submodule add git@github.com:tree-sitter/tree-sitter-$(LANG).git
+	-git submodule add $(REPO)
 	@mkdir -p pkg/bin pkg/lib $(LANG)
 
 $(LIB): $(SRC)
