@@ -32,4 +32,4 @@ dist: $(TAR)
 
 clean:
 	rm -rf *.tar.gz
-	rm -rf $(LIB)
+	rm -rf pkg
