@@ -11,9 +11,8 @@ default: $(TAR)
 $(SRC):
     # create dir if not created already with a repository
     # to compile standard tools.
-	mkdir -p $(LANG) tools
+	mkdir -p pkg/bin pkg/lib $(LANG) tools
 	-git submodule add $(REPO)
-	@mkdir -p pkg/bin pkg/lib $(LANG)
 
 $(LIB): $(SRC)
 	cd tree-sitter-$(LANG) && $(CC) -o parser.so -I./src src/*.c -Os -bundle -arch arm64 -arch x86_64
@@ -22,6 +21,7 @@ $(LIB): $(SRC)
 	@-cp tree-sitter-$(LANG)/queries/tags.scm pkg/lib
 	@-cp nvim-treesitter/runtime/queries/$(LANG)/indents.scm pkg/lib
 	@-cp nvim-treesitter/runtime/queries/$(LANG)/folds.scm pkg/lib
+	@-cp nvim-treesitter/runtime/queries/$(LANG)/locals.scm pkg/lib
 	@-cp src/*.scm pkg/lib
 
 $(TAR): $(LIB)
@@ -33,3 +33,4 @@ dist: $(TAR)
 clean:
 	rm -rf *.tar.gz
 	rm -rf pkg
+	mkdir -p pkg/bin pkg/lib $(LANG) tools
