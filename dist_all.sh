@@ -284,7 +284,6 @@ textproto=git@github.com:PorterAtGoogle/tree-sitter-textproto.git
 thrift=git@github.com:tree-sitter-grammars/tree-sitter-thrift.git
 tiger=git@github.com:ambroisie/tree-sitter-tiger.git
 tlaplus=git@github.com:tlaplus-community/tree-sitter-tlaplus.git
-tmux=git@github.com:Freed-Wu/tree-sitter-tmux.git
 todotxt=git@github.com:arnarg/tree-sitter-todotxt.git
 toml=git@github.com:tree-sitter-grammars/tree-sitter-toml.git
 tsv=git@github.com:tree-sitter-grammars/tree-sitter-csv.git
