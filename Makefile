@@ -15,7 +15,7 @@ $(SRC):
 	-git submodule add $(REPO)
 
 $(LIB): $(SRC)
-	cd tree-sitter-$(LANG) && $(CC) -o parser.so -I./src src/*.c -Os -bundle -arch arm64 -arch x86_64
+	cd tree-sitter-$(LANG) && git reset --hard && $(CC) -o parser.so -I./src src/*.c -Os -bundle -arch arm64 -arch x86_64
 	cp tree-sitter-$(LANG)/parser.so pkg/lib/tree-sitter.so
 	cp tree-sitter-$(LANG)/queries/highlights.scm pkg/lib
 	@touch pkg/lib/LICENSE
@@ -23,6 +23,7 @@ $(LIB): $(SRC)
 	@-cat tree-sitter-$(LANG)/LICENSE* >> pkg/lib/LICENSE
 	@-echo "=================" >> pkg/lib/LICENSE
 	@-cp tree-sitter-$(LANG)/queries/tags.scm pkg/lib
+	@cd nvim-treesitter && git reset --hard
 	@-cp nvim-treesitter/runtime/queries/$(LANG)/indents.scm pkg/lib
 	@-cp nvim-treesitter/runtime/queries/$(LANG)/folds.scm pkg/lib
 	@-cp nvim-treesitter/runtime/queries/$(LANG)/locals.scm pkg/lib
