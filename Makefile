@@ -19,15 +19,15 @@ $(LIB): $(SRC)
 	cp tree-sitter-$(LANG)/parser.so pkg/lib/tree-sitter.so
 	cp tree-sitter-$(LANG)/queries/highlights.scm pkg/lib
 	@touch pkg/lib/LICENSE
-	@sh -c "echo '# $(REPO)' >> pkg/lib/LICENSE"
-	@-sh -c "cat tree-sitter-$(LANG)/LICENSE >> pkg/lib/LICENSE"
-	@sh -c "echo "=================" >> pkg/lib/LICENSE"
+	@-echo '# $(REPO)' >> pkg/lib/LICENSE
+	@-cat tree-sitter-$(LANG)/LICENSE* >> pkg/lib/LICENSE
+	@-echo "=================" >> pkg/lib/LICENSE
 	@-cp tree-sitter-$(LANG)/queries/tags.scm pkg/lib
 	@-cp nvim-treesitter/runtime/queries/$(LANG)/indents.scm pkg/lib
 	@-cp nvim-treesitter/runtime/queries/$(LANG)/folds.scm pkg/lib
 	@-cp nvim-treesitter/runtime/queries/$(LANG)/locals.scm pkg/lib
-	@sh -c "echo '\n\n# https://github.com/nvim-treesitter/nvim-treesitter' >> pkg/lib/LICENSE"
-	@sh -c "nvim-treesitter/LICENSE" >> pkg/lib/LICENSE
+	@-echo '\n\n# https://github.com/nvim-treesitter/nvim-treesitter' >> pkg/lib/LICENSE
+	@-cat nvim-treesitter/LICENSE >> pkg/lib/LICENSE
 	@-cp src/*.scm pkg/lib
 
 $(TAR): $(LIB)
