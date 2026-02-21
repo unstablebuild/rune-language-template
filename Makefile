@@ -14,15 +14,23 @@ $(SRC):
 	mkdir -p pkg/bin pkg/lib $(LANG) tools
 	-git submodule add $(REPO)
 
+PARSER_DIR = tree-sitter-$(LANG)
+ifeq ($(LANG),markdown)
+PARSER_SOURCE = $(PARSER_DIR)/tree-sitter-markdown
+else
+PARSER_SOURCE = $(PARSER_DIR)
+endif
+
 $(LIB): $(SRC)
-	cd tree-sitter-$(LANG) && git reset --hard && $(CC) -o parser.so -I./src src/*.c -Os -bundle -arch arm64 -arch x86_64
-	cp tree-sitter-$(LANG)/parser.so pkg/lib/tree-sitter.so
-	cp tree-sitter-$(LANG)/queries/highlights.scm pkg/lib
+	cd tree-sitter-$(LANG) && git reset --hard
+	$(CC) -o $(PARSER_DIR)/parser.so -I$(PARSER_SOURCE)/src $(PARSER_SOURCE)/src/*.c -Os -bundle -arch arm64 -arch x86_64
+	cp $(PARSER_DIR)/parser.so pkg/lib/tree-sitter.so
+	cp $(PARSER_SOURCE)/queries/highlights.scm pkg/lib
 	@touch pkg/lib/LICENSE
 	@-echo '# $(REPO)\n' >> pkg/lib/LICENSE
 	@-cat tree-sitter-$(LANG)/LICENSE* >> pkg/lib/LICENSE
 	@-echo "================================================================================\n\n" >> pkg/lib/LICENSE
-	@-cp tree-sitter-$(LANG)/queries/tags.scm pkg/lib
+	@-cp $(PARSER_SOURCE)/queries/tags.scm pkg/lib
 	@cd nvim-treesitter && git reset --hard
 	@-cp nvim-treesitter/runtime/queries/$(LANG)/indents.scm pkg/lib
 	@-cp nvim-treesitter/runtime/queries/$(LANG)/folds.scm pkg/lib
