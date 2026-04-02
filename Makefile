@@ -313,6 +313,10 @@ $(LIB): $(SRC)
 	cd $(REPO_DIR) && git reset --hard
 ifdef NEEDS_GENERATE
 	cd $(PARSER_SOURCE) && tree-sitter generate
+	@# Ensure tree_sitter/array.h exists (some scanners depend on it but generate doesn't produce it)
+	@if [ ! -f "$(PARSER_SOURCE)/src/tree_sitter/array.h" ] && [ -f "tree-sitter-bass/src/tree_sitter/array.h" ]; then \
+		cp tree-sitter-bass/src/tree_sitter/array.h $(PARSER_SOURCE)/src/tree_sitter/array.h; \
+	fi
 endif
 	$(CC) -o $(REPO_DIR)/parser.so -I$(PARSER_SOURCE)/src $(PARSER_SOURCE)/src/*.c -Os -bundle -arch arm64 -arch x86_64
 	cp $(REPO_DIR)/parser.so pkg/lib/tree-sitter.so
