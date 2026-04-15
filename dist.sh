@@ -1,6 +1,9 @@
 GIT_REMOTE_URL=$(git remote get-url origin)
 GIT_AUTHOR_EMAIL=$(git log -1 --pretty=format:'%ae')
-GIT_TAG=$(git describe --tags --dirty)
+# This repository is expected to remain dirty during package builds because it
+# contains many checked-out language repos/submodules and generated package
+# artifacts. Do not encode that local workspace state into release versions.
+GIT_TAG=$(git describe --tags)
 GIT_HEAD=$(git rev-parse HEAD)
 BLUE_RELEASE_TAR=$LANG.tar.gz
 BLUE_EXEC=bluectl
