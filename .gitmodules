@@ -923,3 +923,12 @@
 [submodule "tree-sitter-zig"]
 	path = tree-sitter-zig
 	url = git@github.com:tree-sitter-grammars/tree-sitter-zig.git
+[submodule "superhtml"]
+	path = superhtml
+	url = git@github.com:kristoff-it/superhtml.git
+[submodule "ebnf"]
+	path = ebnf
+	url = git@github.com:RubixDev/ebnf.git
+[submodule "ziggy"]
+	path = ziggy
+	url = git@github.com:kristoff-it/ziggy.git
