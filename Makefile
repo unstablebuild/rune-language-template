@@ -320,8 +320,12 @@ ifdef NEEDS_GENERATE
 endif
 	$(CC) -o $(REPO_DIR)/parser.so -I$(PARSER_SOURCE)/src $(PARSER_SOURCE)/src/*.c -Os -bundle -arch arm64 -arch x86_64
 	cp $(REPO_DIR)/parser.so pkg/lib/tree-sitter.so
-	@# Copy highlights — the query source is auto-detected above
-	cp $(QUERY_SOURCE)/highlights.scm pkg/lib
+	@# Expand highlights — inlines any nvim-treesitter `; inherits:`
+	@# chain so the shipped query is self-contained. PRIMARY_QUERY_DIR
+	@# is the auto-detected QUERY_SOURCE; the script walks parents from
+	@# nvim-treesitter when needed.
+	PRIMARY_QUERY_DIR="$(QUERY_SOURCE)" tools/expand-inherits.sh highlights $(LANG) > pkg/lib/highlights.scm \
+		|| (rm -f pkg/lib/highlights.scm; false)
 	@# License aggregation
 	@touch pkg/lib/LICENSE
 	@-echo '# $(REPO)\n' >> pkg/lib/LICENSE
@@ -329,11 +333,14 @@ endif
 	@-echo "================================================================================\n\n" >> pkg/lib/LICENSE
 	@# Copy tags.scm if available
 	@-if [ -n "$(TAGS_SOURCE)" ]; then cp "$(TAGS_SOURCE)" pkg/lib; fi
-	@# Copy additional queries from nvim-treesitter
+	@# Expand additional queries from nvim-treesitter (with inherits chains).
 	@cd nvim-treesitter && git reset --hard
-	@-cp nvim-treesitter/runtime/queries/$(LANG)/indents.scm pkg/lib
-	@-cp nvim-treesitter/runtime/queries/$(LANG)/folds.scm pkg/lib
-	@-cp nvim-treesitter/runtime/queries/$(LANG)/locals.scm pkg/lib
+	@PRIMARY_QUERY_DIR="$(QUERY_SOURCE)" tools/expand-inherits.sh indents $(LANG) > pkg/lib/indents.scm 2>/dev/null \
+		|| rm -f pkg/lib/indents.scm
+	@PRIMARY_QUERY_DIR="$(QUERY_SOURCE)" tools/expand-inherits.sh folds   $(LANG) > pkg/lib/folds.scm   2>/dev/null \
+		|| rm -f pkg/lib/folds.scm
+	@PRIMARY_QUERY_DIR="$(QUERY_SOURCE)" tools/expand-inherits.sh locals  $(LANG) > pkg/lib/locals.scm  2>/dev/null \
+		|| rm -f pkg/lib/locals.scm
 	@-echo '\n\n# https://github.com/nvim-treesitter/nvim-treesitter\n' >> pkg/lib/LICENSE
 	@-cat nvim-treesitter/LICENSE >> pkg/lib/LICENSE
 	@# Copy any local query overrides
@@ -357,3 +364,27 @@ clean:
 	rm -rf *.tar.gz
 	rm -rf pkg
 	mkdir -p pkg/bin pkg/lib $(LANG) tools
+
+# ============================================================================
+# Verification
+#
+# Asserts that the produced pkg/lib/highlights.scm has been fully
+# expanded — i.e. it does not begin with `; inherits:` and is non-trivial.
+# Use after `make` (or in CI) to catch new languages that slip through
+# the expander unnoticed.
+# ============================================================================
+.PHONY: verify-inherits
+verify-inherits:
+	@if [ ! -f pkg/lib/highlights.scm ]; then \
+		echo "verify-inherits: pkg/lib/highlights.scm missing for $(LANG)" >&2; exit 1; \
+	fi
+	@if grep -Eq '^[[:space:]]*;[[:space:]]*inherits[[:space:]]*:' pkg/lib/highlights.scm; then \
+		echo "verify-inherits: $(LANG) highlights.scm still contains an unexpanded '; inherits:' line" >&2; \
+		exit 1; \
+	fi
+	@lines=$$(wc -l < pkg/lib/highlights.scm); \
+	if [ "$$lines" -le 5 ]; then \
+		echo "verify-inherits: $(LANG) highlights.scm has only $$lines lines (likely empty/unexpanded)" >&2; \
+		exit 1; \
+	fi
+	@echo "verify-inherits: $(LANG) ok"
