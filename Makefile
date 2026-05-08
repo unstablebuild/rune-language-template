@@ -6,6 +6,14 @@ CODESIGN_IDENTITY ?= Developer ID Application: Unstable Build, LLC. (YYZRWD888J)
 TAR = $(LANG).tar.gz
 LIB = pkg/lib/tree-sitter.so pkg/lib/highlights.scm
 
+# Resolve a tree-sitter CLI: prefer one already on PATH, then common install
+# locations (homebrew, cargo). Used by recipes that NEEDS_GENERATE.
+TREE_SITTER := $(shell \
+  command -v tree-sitter 2>/dev/null \
+  || ls /opt/homebrew/bin/tree-sitter 2>/dev/null \
+  || ls /usr/local/bin/tree-sitter 2>/dev/null \
+  || ls $$HOME/.cargo/bin/tree-sitter 2>/dev/null)
+
 .PHONY: dist clean default sign
 default: $(TAR)
 
@@ -312,7 +320,12 @@ $(SRC):
 $(LIB): $(SRC)
 	cd $(REPO_DIR) && git reset --hard
 ifdef NEEDS_GENERATE
-	cd $(PARSER_SOURCE) && tree-sitter generate
+	@if [ -z "$(TREE_SITTER)" ]; then \
+		echo "error: tree-sitter CLI not found on PATH or in /opt/homebrew/bin, /usr/local/bin, ~/.cargo/bin"; \
+		echo "       install via 'brew install tree-sitter' or 'cargo install tree-sitter-cli'"; \
+		exit 1; \
+	fi
+	cd $(PARSER_SOURCE) && $(TREE_SITTER) generate
 	@# Ensure tree_sitter/array.h exists (some scanners depend on it but generate doesn't produce it)
 	@if [ ! -f "$(PARSER_SOURCE)/src/tree_sitter/array.h" ] && [ -f "tree-sitter-bass/src/tree_sitter/array.h" ]; then \
 		cp tree-sitter-bass/src/tree_sitter/array.h $(PARSER_SOURCE)/src/tree_sitter/array.h; \
