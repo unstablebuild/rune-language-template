@@ -170,6 +170,7 @@ make=git@github.com:alemuller/tree-sitter-make.git
 markdown=git@github.com:tree-sitter-grammars/tree-sitter-markdown.git
 markdown_inline=git@github.com:tree-sitter-grammars/tree-sitter-markdown.git
 matlab=git@github.com:acristoffers/tree-sitter-matlab.git
+mdx=git@github.com:srazzak/tree-sitter-mdx.git
 menhir=git@github.com:Kerl13/tree-sitter-menhir.git
 mermaid=git@github.com:monaqa/tree-sitter-mermaid.git
 meson=git@github.com:tree-sitter-grammars/tree-sitter-meson.git

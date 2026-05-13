@@ -932,3 +932,6 @@
 [submodule "ziggy"]
 	path = ziggy
 	url = git@github.com:kristoff-it/ziggy.git
+[submodule "tree-sitter-mdx"]
+	path = tree-sitter-mdx
+	url = git@github.com:srazzak/tree-sitter-mdx.git
