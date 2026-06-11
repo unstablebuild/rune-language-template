@@ -1,10 +1,47 @@
 LANG ?= rust
 REPO ?= github.com:tree-sitter/tree-sitter-$(LANG)
-CC = gcc
 UNAME := $(shell uname)
 CODESIGN_IDENTITY ?= Developer ID Application: Unstable Build, LLC. (YYZRWD888J)
-TAR = $(LANG).tar.gz
 LIB = pkg/lib/tree-sitter.so pkg/lib/highlights.scm
+
+# ============================================================================
+# Cross-compilation target
+#
+# TARGET_OS   — darwin | linux  (default: darwin)
+# TARGET_ARCH — arm64  | amd64  (default: arm64)
+#
+# The compiler and link flags are resolved from the target combo below.
+# ============================================================================
+TARGET_OS   ?= darwin
+TARGET_ARCH ?= arm64
+
+# Host OS/arch normalized to the published names (darwin/linux, arm64/amd64).
+# Used to detect native Linux builds, which can use the system gcc instead of a
+# messense cross-toolchain.
+HOST_OS := $(shell uname | tr '[:upper:]' '[:lower:]')
+HOST_ARCH := $(shell case "$$(uname -m)" in arm64|aarch64) echo arm64;; x86_64|amd64) echo amd64;; *) uname -m;; esac)
+
+ifeq ($(TARGET_OS)/$(TARGET_ARCH),darwin/arm64)
+CC        = gcc
+LD_FLAGS  = -bundle
+ARCH_FLAGS = -arch arm64
+else ifeq ($(TARGET_OS)/$(TARGET_ARCH),darwin/amd64)
+CC        = gcc
+LD_FLAGS  = -bundle
+ARCH_FLAGS = -arch x86_64
+else ifeq ($(TARGET_OS)/$(TARGET_ARCH),linux/arm64)
+CC        = $(if $(filter linux/arm64,$(HOST_OS)/$(HOST_ARCH)),gcc,aarch64-unknown-linux-gnu-gcc)
+LD_FLAGS  = -shared -fPIC
+ARCH_FLAGS =
+else ifeq ($(TARGET_OS)/$(TARGET_ARCH),linux/amd64)
+CC        = $(if $(filter linux/amd64,$(HOST_OS)/$(HOST_ARCH)),gcc,x86_64-unknown-linux-gnu-gcc)
+LD_FLAGS  = -shared -fPIC
+ARCH_FLAGS =
+else
+$(error unsupported TARGET_OS/TARGET_ARCH '$(TARGET_OS)/$(TARGET_ARCH)'; supported: darwin/arm64 darwin/amd64 linux/arm64 linux/amd64)
+endif
+
+TAR = $(LANG)-$(TARGET_OS)-$(TARGET_ARCH).tar.gz
 
 # Resolve a tree-sitter CLI: prefer one already on PATH, then common install
 # locations (homebrew, cargo). Used by recipes that NEEDS_GENERATE.
@@ -14,7 +51,11 @@ TREE_SITTER := $(shell \
   || ls /usr/local/bin/tree-sitter 2>/dev/null \
   || ls $$HOME/.cargo/bin/tree-sitter 2>/dev/null)
 
-.PHONY: dist clean default sign
+# Resolve the selected cross-compiler (empty if missing) so recipes can emit a
+# helpful install hint instead of a raw "command not found".
+CC_PATH := $(shell command -v $(CC) 2>/dev/null)
+
+.PHONY: dist clean default sign release-all
 default: $(TAR)
 
 # ============================================================================
@@ -319,6 +360,12 @@ $(SRC):
 
 $(LIB): $(SRC)
 	cd $(REPO_DIR) && git reset --hard
+	@if [ -z "$(CC_PATH)" ]; then \
+		echo "error: cross-compiler '$(CC)' not found on PATH (target $(TARGET_OS)/$(TARGET_ARCH))"; \
+		echo "       install the GNU cross-toolchain via the messense tap:"; \
+		echo "       brew tap messense/macos-cross-toolchains && brew install $(patsubst %-gcc,%,$(CC))"; \
+		exit 1; \
+	fi
 ifdef NEEDS_GENERATE
 	@if [ -z "$(TREE_SITTER)" ]; then \
 		echo "error: tree-sitter CLI not found on PATH or in /opt/homebrew/bin, /usr/local/bin, ~/.cargo/bin"; \
@@ -331,7 +378,7 @@ ifdef NEEDS_GENERATE
 		cp tree-sitter-bass/src/tree_sitter/array.h $(PARSER_SOURCE)/src/tree_sitter/array.h; \
 	fi
 endif
-	$(CC) -o $(REPO_DIR)/parser.so -I$(PARSER_SOURCE)/src $(PARSER_SOURCE)/src/*.c -Os -bundle -arch arm64 -arch x86_64
+	$(CC) -o $(REPO_DIR)/parser.so -I$(PARSER_SOURCE)/src $(PARSER_SOURCE)/src/*.c -Os $(LD_FLAGS) $(ARCH_FLAGS)
 	cp $(REPO_DIR)/parser.so pkg/lib/tree-sitter.so
 	@# Expand highlights — inlines any nvim-treesitter `; inherits:`
 	@# chain so the shipped query is self-contained. PRIMARY_QUERY_DIR
@@ -359,22 +406,29 @@ endif
 	@# Copy any local query overrides
 	@-cp src/*.scm pkg/lib 2>/dev/null || true
 
-ifeq ($(UNAME),Darwin)
+ifeq ($(UNAME)/$(TARGET_OS),Darwin/darwin)
 sign: $(LIB)
 	codesign --force --options runtime --sign "$(CODESIGN_IDENTITY)" pkg/lib/tree-sitter.so
 else
 sign: $(LIB)
-	@echo "Skipping codesign (not on macOS)"
+	@echo "Skipping codesign (host $(UNAME), target $(TARGET_OS))"
 endif
 
 $(TAR): sign
-	cd pkg && tar -czvf ../$(LANG).tar.gz .
+	cd pkg && tar -czvf ../$(TAR) .
 
 dist: $(TAR)
-	@ ./dist.sh
+	@ TARGET_OS=$(TARGET_OS) TARGET_ARCH=$(TARGET_ARCH) BLUE_RELEASE_TAR=$(TAR) ./dist.sh
+
+# Build and publish all four supported platforms in sequence.
+release-all:
+	$(MAKE) dist TARGET_OS=darwin TARGET_ARCH=arm64
+	$(MAKE) dist TARGET_OS=darwin TARGET_ARCH=amd64
+	$(MAKE) dist TARGET_OS=linux  TARGET_ARCH=arm64
+	$(MAKE) dist TARGET_OS=linux  TARGET_ARCH=amd64
 
 clean:
-	rm -rf *.tar.gz
+	rm -rf *.tar.gz *-*-*.tar.gz
 	rm -rf pkg
 	mkdir -p pkg/bin pkg/lib $(LANG) tools
 

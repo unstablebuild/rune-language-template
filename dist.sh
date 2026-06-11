@@ -5,10 +5,21 @@ GIT_AUTHOR_EMAIL=$(git log -1 --pretty=format:'%ae')
 # artifacts. Do not encode that local workspace state into release versions.
 GIT_TAG=$(git describe --tags)
 GIT_HEAD=$(git rev-parse HEAD)
-BLUE_RELEASE_TAR=$LANG.tar.gz
+# Target OS/arch and tarball name are passed in by the Makefile. Fall back to
+# host-derived values (and the legacy tarball name) for standalone invocation.
+OS="${TARGET_OS:-$(uname | awk '{print tolower($0)}')}"
+# Normalize host arch to the published names (amd64/arm64).
+if [[ -n "${TARGET_ARCH}" ]]; then
+	ARCH="${TARGET_ARCH}"
+else
+	case "$(uname -m)" in
+		arm64|aarch64) ARCH="arm64" ;;
+		x86_64|amd64)  ARCH="amd64" ;;
+		*)             ARCH="$(uname -m)" ;;
+	esac
+fi
+BLUE_RELEASE_TAR="${BLUE_RELEASE_TAR:-$LANG.tar.gz}"
 BLUE_EXEC=bluectl
-OS=$(uname | awk '{print tolower($0)}')
-ARCH=$([ "$(sysctl -n hw.optional.arm64)" -eq 1 ] && echo "arm64" || uname -m)
 BLUE_RELEASE_TAG="$GIT_TAG"
 
 echo "Pushing tarball for OS '$OS' and arch '$ARCH'";
