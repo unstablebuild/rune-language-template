@@ -344,7 +344,7 @@ for line in $LANG_REPOS; do
 
     echo "====> PROCESSING $lang -> $repo"
 
-    export LANG=$lang
+    export TARGET_LANG=$lang
     export REPO=$repo
 
     if ! make clean; then

@@ -18,7 +18,7 @@ else
 		*)             ARCH="$(uname -m)" ;;
 	esac
 fi
-BLUE_RELEASE_TAR="${BLUE_RELEASE_TAR:-$LANG.tar.gz}"
+BLUE_RELEASE_TAR="${BLUE_RELEASE_TAR:-$TARGET_LANG.tar.gz}"
 BLUE_EXEC=bluectl
 BLUE_RELEASE_TAG="$GIT_TAG"
 
@@ -34,8 +34,8 @@ if [[ -z "${BLUE_PGP_PASSPHRASE}" ]]; then
 	exit 1;
 fi
 
-if [[ -z "${LANG}" ]]; then
-    echo "LANG is not set to a valid bluectl package"
+if [[ -z "${TARGET_LANG}" ]]; then
+    echo "TARGET_LANG is not set to a valid bluectl package"
 	exit 1;
 fi
 
@@ -59,7 +59,7 @@ blue_release_dist() {
 		-y \
 		-k $BLUE_PGP_KEY \
 		-p $BLUE_PGP_PASSPHRASE \
-		-r $BLUE_PGP_KEYRING $LANG $BLUE_RELEASE_TAG $BLUE_RELEASE_TAR
+		-r $BLUE_PGP_KEYRING $TARGET_LANG $BLUE_RELEASE_TAG $BLUE_RELEASE_TAR
 }
 
 # check if HEAD is tagged; if not, use annotate with range between latest tag and HEAD
