@@ -46,9 +46,6 @@ if [[ -z "${BLUE_PGP_KEYRING}" ]]; then
 fi
 
 blue_release_dist() {
-	GIT_LOG=$(git log --pretty=format:"%h: %s" $GIT_LOG_RANGE)
-	printf "\n$GIT_LOG\n";
-
 	echo "uploading $BLUE_RELEASE_TAG"
 	"${BLUE_EXEC[@]}" release upload \
 		-d target-os=$OS \
@@ -56,22 +53,10 @@ blue_release_dist() {
 		-d git-remote-url=$GIT_REMOTE_URL \
 		-d git-author-email=$GIT_AUTHOR_EMAIL \
 		-d git-tag=$GIT_TAG -d git-head=$GIT_HEAD \
-		-d git-log="$GIT_LOG" \
 		-y \
 		-k $BLUE_PGP_KEY \
 		-p $BLUE_PGP_PASSPHRASE \
 		-r $BLUE_PGP_KEYRING $TARGET_LANG $BLUE_RELEASE_TAG $BLUE_RELEASE_TAR
 }
 
-# check if HEAD is tagged; if not, use annotate with range between latest tag and HEAD
-git describe --contains 2>&1 1> /dev/null;
-if [ $? -ne 0 ];
-then
-	GIT_LOG_RANGE="$(git tag -l --sort=-version:refname | head -1)...HEAD";
-	printf "using git range between latest tag and latest tag + added commits: $GIT_LOG_RANGE:";
-	blue_release_dist;
-else
-	GIT_LOG_RANGE="$(git tag -l --sort=-version:refname | head -2 | xargs | sed 's/ /.../g')";
-	printf "using git range between latest tags: $GIT_LOG_RANGE:";
-	blue_release_dist;
-fi
+blue_release_dist;
