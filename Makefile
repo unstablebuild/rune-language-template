@@ -7,19 +7,20 @@ LIB = pkg/lib/tree-sitter.so pkg/lib/highlights.scm
 # ============================================================================
 # Cross-compilation target
 #
-# TARGET_OS   — darwin | linux  (default: darwin)
-# TARGET_ARCH — arm64  | amd64  (default: arm64)
+# TARGET_OS   — darwin | linux  (default: host OS)
+# TARGET_ARCH — arm64  | amd64  (default: host arch)
 #
 # The compiler and link flags are resolved from the target combo below.
 # ============================================================================
-TARGET_OS   ?= darwin
-TARGET_ARCH ?= arm64
-
 # Host OS/arch normalized to the published names (darwin/linux, arm64/amd64).
 # Used to detect native Linux builds, which can use the system gcc instead of a
-# messense cross-toolchain.
+# messense cross-toolchain, and to pick sensible build defaults.
 HOST_OS := $(shell uname | tr '[:upper:]' '[:lower:]')
-HOST_ARCH := $(shell case "$$(uname -m)" in arm64|aarch64) echo arm64;; x86_64|amd64) echo amd64;; *) uname -m;; esac)
+HOST_ARCH := $(shell uname -m | sed -e 's/^aarch64$$/arm64/' -e 's/^x86_64$$/amd64/')
+
+# Default to building for the host platform. Override to cross-compile.
+TARGET_OS   ?= $(HOST_OS)
+TARGET_ARCH ?= $(HOST_ARCH)
 
 ifeq ($(TARGET_OS)/$(TARGET_ARCH),darwin/arm64)
 CC        = gcc
