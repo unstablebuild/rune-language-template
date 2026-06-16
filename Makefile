@@ -22,6 +22,12 @@ HOST_ARCH := $(shell uname -m | sed -e 's/^aarch64$$/arm64/' -e 's/^x86_64$$/amd
 TARGET_OS   ?= $(HOST_OS)
 TARGET_ARCH ?= $(HOST_ARCH)
 
+# Committed bluectl config tree. The dist-all-{prod,staging}-* targets select a
+# leaf dir (env + os-arch) and pass it through to dist.sh via BLUECTL_CONFIG_DIR.
+BLUECTL_CONFIG_ROOT := $(abspath deploy/bluectl)
+# Resolve a leaf config dir given env (prod|staging) and os-arch slug.
+BLUECTL_CONFIG = $(BLUECTL_CONFIG_ROOT)/$(1)/$(2)
+
 ifeq ($(TARGET_OS)/$(TARGET_ARCH),darwin/arm64)
 CC        = gcc
 LD_FLAGS  = -bundle
@@ -56,7 +62,12 @@ TREE_SITTER := $(shell \
 # helpful install hint instead of a raw "command not found".
 CC_PATH := $(shell command -v $(CC) 2>/dev/null)
 
-.PHONY: dist clean default sign release-all
+.PHONY: dist clean default sign release-all \
+	dist-all-prod dist-all-staging \
+	dist-all-prod-darwin-arm64 dist-all-staging-darwin-arm64 \
+	dist-all-prod-darwin-amd64 dist-all-staging-darwin-amd64 \
+	dist-all-prod-linux-arm64 dist-all-staging-linux-arm64 \
+	dist-all-prod-linux-amd64 dist-all-staging-linux-amd64
 default: $(TAR)
 
 # ============================================================================
@@ -427,6 +438,39 @@ release-all:
 	$(MAKE) dist TARGET_OS=darwin TARGET_ARCH=amd64
 	$(MAKE) dist TARGET_OS=linux  TARGET_ARCH=arm64
 	$(MAKE) dist TARGET_OS=linux  TARGET_ARCH=amd64
+
+# ============================================================================
+# Env-scoped publish targets
+#
+# Each target selects a committed bluectl config (prod|staging × os-arch) and
+# exports it as BLUECTL_CONFIG_DIR so dist.sh routes to the right GCP
+# project/bucket. Host-default variants build for the host os/arch; explicit
+# variants build the named os/arch (darwin targets require a macOS host).
+# ============================================================================
+dist-all-prod:
+	@BLUECTL_CONFIG_DIR=$(call BLUECTL_CONFIG,prod,$(HOST_OS)-$(HOST_ARCH)) ./dist_all.sh $(HOST_OS) $(HOST_ARCH)
+dist-all-staging:
+	@BLUECTL_CONFIG_DIR=$(call BLUECTL_CONFIG,staging,$(HOST_OS)-$(HOST_ARCH)) ./dist_all.sh $(HOST_OS) $(HOST_ARCH)
+
+dist-all-prod-darwin-arm64:
+	@BLUECTL_CONFIG_DIR=$(call BLUECTL_CONFIG,prod,darwin-arm64) ./dist_all.sh darwin arm64
+dist-all-staging-darwin-arm64:
+	@BLUECTL_CONFIG_DIR=$(call BLUECTL_CONFIG,staging,darwin-arm64) ./dist_all.sh darwin arm64
+
+dist-all-prod-darwin-amd64:
+	@BLUECTL_CONFIG_DIR=$(call BLUECTL_CONFIG,prod,darwin-amd64) ./dist_all.sh darwin amd64
+dist-all-staging-darwin-amd64:
+	@BLUECTL_CONFIG_DIR=$(call BLUECTL_CONFIG,staging,darwin-amd64) ./dist_all.sh darwin amd64
+
+dist-all-prod-linux-arm64:
+	@BLUECTL_CONFIG_DIR=$(call BLUECTL_CONFIG,prod,linux-arm64) ./dist_all.sh linux arm64
+dist-all-staging-linux-arm64:
+	@BLUECTL_CONFIG_DIR=$(call BLUECTL_CONFIG,staging,linux-arm64) ./dist_all.sh linux arm64
+
+dist-all-prod-linux-amd64:
+	@BLUECTL_CONFIG_DIR=$(call BLUECTL_CONFIG,prod,linux-amd64) ./dist_all.sh linux amd64
+dist-all-staging-linux-amd64:
+	@BLUECTL_CONFIG_DIR=$(call BLUECTL_CONFIG,staging,linux-amd64) ./dist_all.sh linux amd64
 
 clean:
 	rm -rf *.tar.gz *-*-*.tar.gz

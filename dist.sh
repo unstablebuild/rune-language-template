@@ -19,7 +19,8 @@ else
 	esac
 fi
 BLUE_RELEASE_TAR="${BLUE_RELEASE_TAR:-$TARGET_LANG.tar.gz}"
-BLUE_EXEC=bluectl
+: "${BLUECTL_CONFIG_DIR:?BLUECTL_CONFIG_DIR is not set. Use the dist-all-{prod,staging}-* make targets so the bluectl env+os+arch is selected by the target.}"
+BLUE_EXEC=(bluectl -c "$BLUECTL_CONFIG_DIR")
 BLUE_RELEASE_TAG="$GIT_TAG"
 
 echo "Pushing tarball for OS '$OS' and arch '$ARCH'";
@@ -49,7 +50,7 @@ blue_release_dist() {
 	printf "\n$GIT_LOG\n";
 
 	echo "uploading $BLUE_RELEASE_TAG"
-	$BLUE_EXEC release upload \
+	"${BLUE_EXEC[@]}" release upload \
 		-d target-os=$OS \
 		-d target-arch=$ARCH \
 		-d git-remote-url=$GIT_REMOTE_URL \

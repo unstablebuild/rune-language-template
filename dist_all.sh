@@ -1,5 +1,63 @@
 #!/bin/bash
 
+# Build and publish every language package for a single OS/arch target.
+#
+# Usage:
+#   ./dist_all.sh [TARGET_OS] [TARGET_ARCH]
+#   ./dist_all.sh --os darwin --arch amd64
+#
+# TARGET_OS   — darwin | linux  (default: host OS)
+# TARGET_ARCH — arm64  | amd64  (default: host arch)
+#
+# The values are exported so the Makefile uses them for every language.
+usage() {
+	echo "usage: $0 [TARGET_OS] [TARGET_ARCH]"
+	echo "       $0 --os <darwin|linux> --arch <arm64|amd64>"
+	echo "  TARGET_OS defaults to the host OS, TARGET_ARCH to the host arch."
+}
+
+while [[ $# -gt 0 ]]; do
+	case "$1" in
+		--os)   TARGET_OS="$2"; shift 2 ;;
+		--arch) TARGET_ARCH="$2"; shift 2 ;;
+		-h|--help) usage; exit 0 ;;
+		-*) echo "unknown option: $1" >&2; usage >&2; exit 1 ;;
+		*)
+			if [[ -z "${TARGET_OS_SET}" ]]; then
+				TARGET_OS="$1"; TARGET_OS_SET=1
+			elif [[ -z "${TARGET_ARCH_SET}" ]]; then
+				TARGET_ARCH="$1"; TARGET_ARCH_SET=1
+			else
+				echo "unexpected argument: $1" >&2; usage >&2; exit 1
+			fi
+			shift
+			;;
+	esac
+done
+
+# Default to the host platform (matches the Makefile defaults).
+TARGET_OS="${TARGET_OS:-$(uname | tr '[:upper:]' '[:lower:]')}"
+if [[ -z "${TARGET_ARCH}" ]]; then
+	TARGET_ARCH=$(uname -m | sed -e 's/^aarch64$/arm64/' -e 's/^x86_64$/amd64/')
+fi
+
+case "${TARGET_OS}/${TARGET_ARCH}" in
+	darwin/arm64|darwin/amd64|linux/arm64|linux/amd64) ;;
+	*)
+		echo "unsupported TARGET_OS/TARGET_ARCH '${TARGET_OS}/${TARGET_ARCH}'" >&2
+		echo "supported: darwin/arm64 darwin/amd64 linux/arm64 linux/amd64" >&2
+		exit 1
+		;;
+esac
+
+# The bluectl config dir (env + os/arch) is selected by the make target. Fail
+# fast for bare invocations so the publishing destination is never ambiguous.
+: "${BLUECTL_CONFIG_DIR:?BLUECTL_CONFIG_DIR is not set. Use the dist-all-{prod,staging}-* make targets so the bluectl env+os+arch is selected by the target.}"
+export BLUECTL_CONFIG_DIR
+
+export TARGET_OS TARGET_ARCH
+echo "Building all packages for ${TARGET_OS}/${TARGET_ARCH}"
+
 # Language -> Repository URL map (SSH format)
 # Extracted from nvim-treesitter SUPPORTED_LANGUAGES.md
 # the following were removed due to being GPL licensed.
