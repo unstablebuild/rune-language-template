@@ -87,6 +87,7 @@ default: $(TAR)
 REPO_DIR       = tree-sitter-$(TARGET_LANG)
 PARSER_SOURCE  = $(REPO_DIR)
 NEEDS_GENERATE =
+EXTRA_CFLAGS   =
 
 # ---------------------------------------------------------------------------
 # Category 1: Hyphen/underscore repo directory mismatches
@@ -317,6 +318,10 @@ NEEDS_GENERATE = 1
 endif
 ifeq ($(TARGET_LANG),perl)
 NEEDS_GENERATE = 1
+# Perl vendors its own bsearch() in src/bsearch.h, which collides with the
+# type-generic bsearch macro modern glibc exposes under newer C standards.
+# Compile under gnu99 to suppress the conflicting macro definition.
+EXTRA_CFLAGS = -std=gnu99
 endif
 ifeq ($(TARGET_LANG),pod)
 NEEDS_GENERATE = 1
@@ -390,7 +395,7 @@ ifdef NEEDS_GENERATE
 		cp tree-sitter-bass/src/tree_sitter/array.h $(PARSER_SOURCE)/src/tree_sitter/array.h; \
 	fi
 endif
-	$(CC) -o $(REPO_DIR)/parser.so -I$(PARSER_SOURCE)/src $(PARSER_SOURCE)/src/*.c -Os $(LD_FLAGS) $(ARCH_FLAGS)
+	$(CC) -o $(REPO_DIR)/parser.so -I$(PARSER_SOURCE)/src $(PARSER_SOURCE)/src/*.c -Os $(EXTRA_CFLAGS) $(LD_FLAGS) $(ARCH_FLAGS)
 	cp $(REPO_DIR)/parser.so pkg/lib/tree-sitter.so
 	@# Expand highlights — inlines any nvim-treesitter `; inherits:`
 	@# chain so the shipped query is self-contained. PRIMARY_QUERY_DIR
