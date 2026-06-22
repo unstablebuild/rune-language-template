@@ -1,4 +1,4 @@
-TARGET_LANG ?= rust
+TARGET_LANG ?= javascript
 REPO ?= github.com:tree-sitter/tree-sitter-$(TARGET_LANG)
 UNAME := $(shell uname)
 CODESIGN_IDENTITY ?= Developer ID Application: Unstable Build, LLC. (YYZRWD888J)

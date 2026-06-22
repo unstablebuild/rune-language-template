@@ -2,9 +2,6 @@
 [submodule "nvim-treesitter"]
 	path = nvim-treesitter
 	url = git@github.com:nvim-treesitter/nvim-treesitter.git
-[submodule "tree-sitter-rust"]
-	path = tree-sitter-rust
-	url = git@github.com:tree-sitter/tree-sitter-rust.git
 [submodule "tree-sitter-agda"]
 	path = tree-sitter-agda
 	url = git@github.com:tree-sitter/tree-sitter-agda.git
@@ -620,9 +617,6 @@
 [submodule "tree-sitter-pymanifest"]
 	path = tree-sitter-pymanifest
 	url = git@github.com:tree-sitter-grammars/tree-sitter-pymanifest.git
-[submodule "tree-sitter-python"]
-	path = tree-sitter-python
-	url = git@github.com:tree-sitter/tree-sitter-python.git
 [submodule "tree-sitter-ql"]
 	path = tree-sitter-ql
 	url = git@github.com:tree-sitter/tree-sitter-ql.git
