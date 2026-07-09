@@ -38,6 +38,14 @@ export BLUECTL_CONFIG_DIR
 command -v bluectl >/dev/null || { echo "bluectl not found in PATH" >&2; exit 1; }
 command -v jq >/dev/null || { echo "jq not found in PATH" >&2; exit 1; }
 
+# bluectl honors the -c config-dir flag, NOT the BLUECTL_CONFIG_DIR env
+# var. Without -c it silently falls back to ~/.bluectl/config, which can
+# point at a different project (e.g. dev), so wrap every call to force
+# the intended env.
+bluectl() {
+	command bluectl -c "$BLUECTL_CONFIG_DIR" "$@"
+}
+
 # Packages that are published but are NOT language grammars.
 NON_LANGUAGE_PACKAGES="fuzzy-search rune-agent runectl"
 
