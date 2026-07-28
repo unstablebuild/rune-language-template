@@ -500,3 +500,20 @@ verify-inherits:
 		exit 1; \
 	fi
 	@echo "verify-inherits: $(TARGET_LANG) ok"
+
+# ============================================================================
+# Asserts that pkg/lib/locals.scm speaks the capture vocabulary Rune
+# matches on (@local.scope, @local.reference, @local.definition.*).
+# Upstream grammar repos often ship the bare spelling, which parses
+# fine and then matches nothing at all.
+# ============================================================================
+.PHONY: verify-locals
+verify-locals:
+	@if [ ! -f pkg/lib/locals.scm ]; then \
+		echo "verify-locals: $(TARGET_LANG) ships no locals.scm"; \
+	elif sed 's/$$/ /' pkg/lib/locals.scm | grep -Eq '@(scope|reference|definition)[^A-Za-z0-9_-]'; then \
+		echo "verify-locals: $(TARGET_LANG) locals.scm has unprefixed captures; Rune only matches @local.*" >&2; \
+		exit 1; \
+	else \
+		echo "verify-locals: $(TARGET_LANG) ok"; \
+	fi
