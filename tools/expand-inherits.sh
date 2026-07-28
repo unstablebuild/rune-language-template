@@ -39,6 +39,15 @@
 #
 # Cycles are prevented by tracking visited <kind>:<lang> pairs in the
 # `EXPAND_INHERITS_VISITED` env var (colon-separated).
+#
+# Locals queries are additionally normalized to the nvim-treesitter
+# capture vocabulary (@local.scope, @local.reference,
+# @local.definition.*), which is what Rune matches against. Several
+# upstream grammar repos ship the unprefixed spelling (@scope,
+# @definition.function), which would silently match nothing.
+# Set EXPAND_INHERITS_NORMALIZE=0 to emit the sources verbatim; only
+# dist_stale_locals.sh needs this, to detect packages whose shipped
+# locals.scm predates the normalization.
 
 set -euo pipefail
 
@@ -217,6 +226,21 @@ expand_lang() {
 # Top-level: emit a banner so the produced file is debuggable, then
 # expand from the requested language as the primary.
 
+# normalize_captures
+#   Rewrites bare locals captures to their `local.`-prefixed spelling
+#   so a grammar repo's own queries and the nvim-treesitter ones end
+#   up with a single vocabulary. `#set!` properties (e.g.
+#   `definition.function.scope`) carry no `@` and are left alone.
+normalize_captures() {
+    if [ "$kind" != "locals" ] || [ "${EXPAND_INHERITS_NORMALIZE:-1}" = "0" ]; then
+        cat
+        return
+    fi
+    sed -E \
+        -e 's/@(scope|reference|definition)([^A-Za-z0-9_-])/@local.\1\2/g' \
+        -e 's/@(scope|reference|definition)$/@local.\1/'
+}
+
 # First, sanity-check that we can resolve the primary file at all. If
 # not, exit non-zero with no output so the Makefile's `-` prefix can
 # swallow the failure (matching the previous `cp` semantics).
@@ -230,4 +254,4 @@ fi
     echo "; Inherits chains have been inlined; do not re-expand."
     echo
     expand_lang "$lang" 1
-}
+} | normalize_captures
