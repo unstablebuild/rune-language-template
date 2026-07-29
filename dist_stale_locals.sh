@@ -11,14 +11,26 @@
 # rebuild to pick the fix up.
 #
 # Affected languages are detected, not hardcoded: a language is stale when the
-# normalized expansion differs from the verbatim one.
+# normalized expansion differs from the verbatim one. Detection reads the
+# grammar sources in this checkout, so a language whose grammar repo is not
+# checked out is reported as unknown rather than clean — publishing decisions
+# must never rest on a source tree that cannot answer the question.
+#
+# Publishing is per platform, so a language republished for darwin is still
+# stale for linux. Pass --langs to republish a known set on another host
+# instead of re-deriving it.
 #
 # Usage:
 #   ./dist_stale_locals.sh [--list] [--dry-run] [TARGET_OS] [TARGET_ARCH]
 #   ./dist_stale_locals.sh --os darwin --arch amd64
+#   ./dist_stale_locals.sh --langs "starlark ada" linux amd64
+#   ./dist_stale_locals.sh --langs-file stale.txt linux amd64
 #
-# --list      Print the stale languages and exit (no build, no bluectl).
-# --dry-run   Print what would be built and published, then exit.
+# --list        Print the stale languages and exit (no build, no bluectl).
+# --dry-run     Print what would be built and published, then exit.
+# --langs       Republish this whitespace-separated set, skipping detection.
+# --langs-file  Republish the languages named in this file, one per line.
+# --fetch       Check out missing grammar sources before detecting.
 #
 # TARGET_OS   — darwin | linux  (default: host OS)
 # TARGET_ARCH — arm64  | amd64  (default: host arch)
@@ -28,19 +40,26 @@
 set -u
 
 usage() {
-	echo "usage: $0 [--list] [--dry-run] [TARGET_OS] [TARGET_ARCH]"
+	echo "usage: $0 [--list] [--dry-run] [--fetch] [TARGET_OS] [TARGET_ARCH]"
 	echo "       $0 --os <darwin|linux> --arch <arm64|amd64>"
+	echo "       $0 --langs \"<lang> <lang>\" | --langs-file <path>"
 	echo "  Rebuilds every package whose locals.scm still has unprefixed captures."
 }
 
 LIST_ONLY=0
 DRY_RUN=0
+FETCH=0
+LANGS_ARG=""
+LANGS_FILE=""
 TARGET_OS_SET=""
 TARGET_ARCH_SET=""
 while [[ $# -gt 0 ]]; do
 	case "$1" in
-		--list)    LIST_ONLY=1; shift ;;
-		--dry-run) DRY_RUN=1; shift ;;
+		--list)       LIST_ONLY=1; shift ;;
+		--dry-run)    DRY_RUN=1; shift ;;
+		--fetch)      FETCH=1; shift ;;
+		--langs)      LANGS_ARG="$2"; shift 2 ;;
+		--langs-file) LANGS_FILE="$2"; shift 2 ;;
 		--os)      TARGET_OS="$2"; shift 2 ;;
 		--arch)    TARGET_ARCH="$2"; shift 2 ;;
 		-h|--help) usage; exit 0 ;;
@@ -66,28 +85,134 @@ if [[ ! -f "${LANG_REPOS_FILE}" ]]; then
 	exit 1
 fi
 
-# stale_langs prints every language whose locals expansion changes under
-# normalization. Languages without a locals query are skipped.
-stale_langs() {
-	local line lang fixed raw
+# repo_dir_for echoes the checkout directory for a language, derived from its
+# clone URL so hyphenated repos (tree-sitter-c-sharp) resolve correctly.
+repo_dir_for() {
+	local url="${1#*=}"
+	url="${url##*/}"
+	echo "${url%.git}"
+}
+
+# query_dir_for mirrors the Makefile's QUERY_SOURCE resolution so detection
+# sees the same query files the build will ship.
+query_dir_for() {
+	local lang="$1" dir="$2"
+	if [[ -f "${dir}/queries/highlights.scm" ]]; then
+		echo "${dir}/queries"
+	elif [[ -f "${dir}/queries/${lang}/highlights.scm" ]]; then
+		echo "${dir}/queries/${lang}"
+	elif [[ -f "nvim-treesitter/runtime/queries/${lang}/highlights.scm" ]]; then
+		echo "nvim-treesitter/runtime/queries/${lang}"
+	fi
+}
+
+# assert_expander_normalizes fails closed when the checkout predates the
+# capture normalization: without it every expansion compares equal to itself
+# and the scan reports a clean tree no matter how many packages are stale.
+assert_expander_normalizes() {
+	local probe="tree-sitter-__normalize_probe__"
+	rm -rf "${probe}"
+	mkdir -p "${probe}/queries"
+	printf '(module) @scope\n' > "${probe}/queries/locals.scm"
+	local out
+	out="$(tools/expand-inherits.sh locals __normalize_probe__ 2>/dev/null)"
+	rm -rf "${probe}"
+	if [[ "${out}" != *"@local.scope"* ]]; then
+		echo "tools/expand-inherits.sh does not normalize locals captures." >&2
+		echo "This checkout predates the normalization; pull before scanning." >&2
+		exit 1
+	fi
+}
+
+STALE=""
+UNKNOWN=""
+CLEAN_COUNT=0
+
+# classify_langs sorts every mapped language into stale, clean or unknown.
+# Unknown means the grammar sources are absent, so this checkout cannot tell
+# what the published package shipped.
+classify_langs() {
+	local line lang dir qdir fixed raw
 	while IFS= read -r line; do
 		lang="${line%%=*}"
-		fixed="$(tools/expand-inherits.sh locals "$lang" 2>/dev/null)" || continue
-		raw="$(EXPAND_INHERITS_NORMALIZE=0 tools/expand-inherits.sh locals "$lang" 2>/dev/null)" || continue
+		dir="$(repo_dir_for "$line")"
+		if [[ ! -d "${dir}" ]]; then
+			UNKNOWN="${UNKNOWN} ${lang}"
+			continue
+		fi
+		qdir="$(query_dir_for "${lang}" "${dir}")"
+		fixed="$(PRIMARY_QUERY_DIR="${qdir}" tools/expand-inherits.sh locals "$lang" 2>/dev/null)" || {
+			CLEAN_COUNT=$((CLEAN_COUNT + 1))
+			continue
+		}
+		raw="$(PRIMARY_QUERY_DIR="${qdir}" EXPAND_INHERITS_NORMALIZE=0 \
+			tools/expand-inherits.sh locals "$lang" 2>/dev/null)" || {
+			CLEAN_COUNT=$((CLEAN_COUNT + 1))
+			continue
+		}
 		if [[ "$fixed" != "$raw" ]]; then
-			echo "$lang"
+			STALE="${STALE} ${lang}"
+		else
+			CLEAN_COUNT=$((CLEAN_COUNT + 1))
 		fi
 	done < <(grep -Ev '^[[:space:]]*(#|$)' "${LANG_REPOS_FILE}")
 }
 
-echo "Scanning $(grep -cEv '^[[:space:]]*(#|$)' "${LANG_REPOS_FILE}") languages for unprefixed locals captures..." >&2
-STALE="$(stale_langs)"
+# fetch_unknown checks out the grammar sources detection could not find.
+fetch_unknown() {
+	local lang line dir
+	for lang in ${UNKNOWN}; do
+		line="$(grep -E "^${lang}=" "${LANG_REPOS_FILE}" | head -1)"
+		dir="$(repo_dir_for "${line}")"
+		echo "fetching ${dir}" >&2
+		git submodule update --init --depth 1 -- "${dir}" >&2 || true
+	done
+	UNKNOWN=""
+	STALE=""
+	CLEAN_COUNT=0
+	classify_langs
+}
 
-if [[ -z "${STALE}" ]]; then
-	echo "No stale locals.scm found; nothing to republish."
-	exit 0
+if [[ -n "${LANGS_ARG}" || -n "${LANGS_FILE}" ]]; then
+	if [[ -n "${LANGS_FILE}" ]]; then
+		if [[ ! -f "${LANGS_FILE}" ]]; then
+			echo "missing language list: ${LANGS_FILE}" >&2
+			exit 1
+		fi
+		STALE="$(grep -Ev '^[[:space:]]*(#|$)' "${LANGS_FILE}" | tr '\n' ' ')"
+	else
+		STALE="${LANGS_ARG}"
+	fi
+	for lang in ${STALE}; do
+		if ! grep -qE "^${lang}=" "${LANG_REPOS_FILE}"; then
+			echo "unknown language: ${lang}" >&2
+			exit 1
+		fi
+	done
+else
+	assert_expander_normalizes
+	echo "Scanning $(grep -cEv '^[[:space:]]*(#|$)' "${LANG_REPOS_FILE}") languages for unprefixed locals captures..." >&2
+	classify_langs
+	if [[ "${FETCH}" -eq 1 && -n "${UNKNOWN}" ]]; then
+		fetch_unknown
+	fi
+	if [[ -n "${UNKNOWN}" ]]; then
+		echo "unknown (grammar sources not checked out):${UNKNOWN}" >&2
+	fi
+	if [[ -z "${STALE}" ]]; then
+		if [[ -n "${UNKNOWN}" ]]; then
+			echo "No stale locals.scm among the languages this checkout can read," >&2
+			echo "but the ones listed above could not be checked. Re-run with --fetch," >&2
+			echo "or pass --langs with the set published from another host." >&2
+			exit 1
+		fi
+		echo "No stale locals.scm found; nothing to republish."
+		exit 0
+	fi
+	echo "clean: ${CLEAN_COUNT}"
 fi
 
+STALE="$(echo ${STALE} | tr ' ' '\n' | grep -v '^$')"
 STALE_COUNT="$(echo "${STALE}" | wc -l | tr -d ' ')"
 echo "${STALE_COUNT} stale language packages:"
 echo "${STALE}" | tr '\n' ' '
