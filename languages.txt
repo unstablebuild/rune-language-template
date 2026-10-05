@@ -323,7 +323,6 @@ xresources=git@github.com:ValdezFOmar/tree-sitter-xresources.git
 yaml=git@github.com:tree-sitter-grammars/tree-sitter-yaml.git
 yang=git@github.com:Hubro/tree-sitter-yang.git
 yuck=git@github.com:tree-sitter-grammars/tree-sitter-yuck.git
-zig=git@github.com:tree-sitter-grammars/tree-sitter-zig.git
 ziggy=git@github.com:kristoff-it/ziggy.git
 ziggy_schema=git@github.com:kristoff-it/ziggy.git
 zsh=git@github.com:georgeharker/tree-sitter-zsh.git

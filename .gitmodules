@@ -914,9 +914,6 @@
 [submodule "tree-sitter-zathurarc"]
 	path = tree-sitter-zathurarc
 	url = git@github.com:Freed-Wu/tree-sitter-zathurarc.git
-[submodule "tree-sitter-zig"]
-	path = tree-sitter-zig
-	url = git@github.com:tree-sitter-grammars/tree-sitter-zig.git
 [submodule "superhtml"]
 	path = superhtml
 	url = git@github.com:kristoff-it/superhtml.git
