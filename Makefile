@@ -14,13 +14,19 @@ LIB = pkg/lib/tree-sitter.so pkg/lib/highlights.scm
 # ============================================================================
 # Host OS/arch normalized to the published names (darwin/linux, arm64/amd64).
 # Used to detect native Linux builds, which can use the system gcc instead of a
-# messense cross-toolchain, and to pick sensible build defaults.
+# zig cross-compiler, and to pick sensible build defaults.
 HOST_OS := $(shell uname | tr '[:upper:]' '[:lower:]')
 HOST_ARCH := $(shell uname -m | sed -e 's/^aarch64$$/arm64/' -e 's/^x86_64$$/amd64/')
 
 # Default to building for the host platform. Override to cross-compile.
 TARGET_OS   ?= $(HOST_OS)
 TARGET_ARCH ?= $(HOST_ARCH)
+
+# Linux targets that don't match the host are cross-compiled with `zig cc`,
+# which bundles glibc headers and link stubs for every target. The pinned glibc
+# version is the newest one the packages may require at load time.
+ZIG ?= zig
+ZIG_GLIBC = 2.28
 
 # Committed bluectl config tree. The dist-all-{prod,staging}-* targets select a
 # leaf dir (env + os-arch) and pass it through to dist.sh via BLUECTL_CONFIG_DIR.
@@ -37,11 +43,11 @@ CC        = gcc
 LD_FLAGS  = -bundle
 ARCH_FLAGS = -arch x86_64
 else ifeq ($(TARGET_OS)/$(TARGET_ARCH),linux/arm64)
-CC        = $(if $(filter linux/arm64,$(HOST_OS)/$(HOST_ARCH)),gcc,aarch64-unknown-linux-gnu-gcc)
+CC        = $(if $(filter linux/arm64,$(HOST_OS)/$(HOST_ARCH)),gcc,$(ZIG) cc -target aarch64-linux-gnu.$(ZIG_GLIBC))
 LD_FLAGS  = -shared -fPIC
 ARCH_FLAGS =
 else ifeq ($(TARGET_OS)/$(TARGET_ARCH),linux/amd64)
-CC        = $(if $(filter linux/amd64,$(HOST_OS)/$(HOST_ARCH)),gcc,x86_64-unknown-linux-gnu-gcc)
+CC        = $(if $(filter linux/amd64,$(HOST_OS)/$(HOST_ARCH)),gcc,$(ZIG) cc -target x86_64-linux-gnu.$(ZIG_GLIBC))
 LD_FLAGS  = -shared -fPIC
 ARCH_FLAGS =
 else
@@ -58,9 +64,9 @@ TREE_SITTER := $(shell \
   || ls /usr/local/bin/tree-sitter 2>/dev/null \
   || ls $$HOME/.cargo/bin/tree-sitter 2>/dev/null)
 
-# Resolve the selected cross-compiler (empty if missing) so recipes can emit a
+# Resolve the selected compiler (empty if missing) so recipes can emit a
 # helpful install hint instead of a raw "command not found".
-CC_PATH := $(shell command -v $(CC) 2>/dev/null)
+CC_PATH := $(shell command -v $(firstword $(CC)) 2>/dev/null)
 
 .PHONY: dist clean default sign release-all \
 	dist-all-prod dist-all-staging \
@@ -378,9 +384,8 @@ $(SRC):
 $(LIB): $(SRC)
 	cd $(REPO_DIR) && git reset --hard
 	@if [ -z "$(CC_PATH)" ]; then \
-		echo "error: cross-compiler '$(CC)' not found on PATH (target $(TARGET_OS)/$(TARGET_ARCH))"; \
-		echo "       install the GNU cross-toolchain via the messense tap:"; \
-		echo "       brew tap messense/macos-cross-toolchains && brew install $(patsubst %-gcc,%,$(CC))"; \
+		echo "error: compiler '$(firstword $(CC))' not found on PATH (target $(TARGET_OS)/$(TARGET_ARCH))"; \
+		echo "       cross-compiling to Linux uses zig: 'brew install zig', or set ZIG=/path/to/zig"; \
 		exit 1; \
 	fi
 ifdef NEEDS_GENERATE

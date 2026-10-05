@@ -100,7 +100,7 @@ for line in $LANG_REPOS; do
         continue
     fi
 
-    if ! bluectl package create -d notes="Rune language package for the $lang programming language." $lang; then
+    if ! bluectl -c "$BLUECTL_CONFIG_DIR" package create -d notes="Rune language package for the $lang programming language." $lang; then
         echo "FAILED: bluectl package create for $lang"
         FAILED_BLUECTL="$FAILED_BLUECTL $lang"
         FAIL_COUNT=$((FAIL_COUNT + 1))
