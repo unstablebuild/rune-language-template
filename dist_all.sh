@@ -80,6 +80,7 @@ IFS=$'\n'
 for line in $LANG_REPOS; do
     lang="${line%%=*}"
     repo="${line#*=}"
+    TOTAL=$((TOTAL + 1))
 
     echo "====> PROCESSING $lang -> $repo"
 
