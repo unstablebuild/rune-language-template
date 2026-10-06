@@ -25,6 +25,9 @@ TARGET_ARCH ?= $(HOST_ARCH)
 # Linux targets that don't match the host are cross-compiled with `zig cc`,
 # which bundles glibc headers and link stubs for every target. The pinned glibc
 # version is the newest one the packages may require at load time.
+# zig cc defines NDEBUG whenever an optimization flag is passed, which gcc and
+# clang never do; undefine it so asserts match the darwin and native builds
+# (tree-sitter-just refuses to compile without them).
 ZIG ?= zig
 ZIG_GLIBC = 2.28
 
@@ -43,11 +46,11 @@ CC        = gcc
 LD_FLAGS  = -bundle
 ARCH_FLAGS = -arch x86_64
 else ifeq ($(TARGET_OS)/$(TARGET_ARCH),linux/arm64)
-CC        = $(if $(filter linux/arm64,$(HOST_OS)/$(HOST_ARCH)),gcc,$(ZIG) cc -target aarch64-linux-gnu.$(ZIG_GLIBC))
+CC        = $(if $(filter linux/arm64,$(HOST_OS)/$(HOST_ARCH)),gcc,$(ZIG) cc -UNDEBUG -target aarch64-linux-gnu.$(ZIG_GLIBC))
 LD_FLAGS  = -shared -fPIC
 ARCH_FLAGS =
 else ifeq ($(TARGET_OS)/$(TARGET_ARCH),linux/amd64)
-CC        = $(if $(filter linux/amd64,$(HOST_OS)/$(HOST_ARCH)),gcc,$(ZIG) cc -target x86_64-linux-gnu.$(ZIG_GLIBC))
+CC        = $(if $(filter linux/amd64,$(HOST_OS)/$(HOST_ARCH)),gcc,$(ZIG) cc -UNDEBUG -target x86_64-linux-gnu.$(ZIG_GLIBC))
 LD_FLAGS  = -shared -fPIC
 ARCH_FLAGS =
 else
