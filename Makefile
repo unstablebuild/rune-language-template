@@ -1,7 +1,14 @@
 TARGET_LANG ?= bash
 REPO ?= github.com:tree-sitter/tree-sitter-$(TARGET_LANG)
 UNAME := $(shell uname)
-CODESIGN_IDENTITY ?= Developer ID Application: Unstable Build, LLC. (YYZRWD888J)
+# Rune runs with the hardened runtime and library validation, so macOS only
+# lets it dlopen a tree-sitter.so signed by Rune's own team; an ad-hoc signed
+# one fails with "different Team IDs". Not overridable from the environment.
+# scripts/macos-signing.sh signs macOS packages, and `make test` checks them.
+TEAM_ID = YYZRWD888J
+CODESIGN_IDENTITY = Developer ID Application: Unstable Build, LLC. ($(TEAM_ID))
+MACOS_SIGNING = TEAM_ID=$(TEAM_ID) CODESIGN_IDENTITY="$(CODESIGN_IDENTITY)" \
+	TARGET_ARCH=$(TARGET_ARCH) ./scripts/macos-signing.sh
 LIB = pkg/lib/tree-sitter.so pkg/lib/highlights.scm
 
 # ============================================================================
@@ -71,7 +78,7 @@ TREE_SITTER := $(shell \
 # helpful install hint instead of a raw "command not found".
 CC_PATH := $(shell command -v $(firstword $(CC)) 2>/dev/null)
 
-.PHONY: dist clean default sign release-all \
+.PHONY: dist clean default sign test check-macos release-all \
 	dist-all-prod dist-all-staging \
 	dist-all-prod-darwin-arm64 dist-all-staging-darwin-arm64 \
 	dist-all-prod-darwin-amd64 dist-all-staging-darwin-amd64 \
@@ -422,22 +429,37 @@ endif
 	@# Copy any local query overrides
 	@-cp src/*.scm pkg/lib 2>/dev/null || true
 
-ifeq ($(UNAME)/$(TARGET_OS),Darwin/darwin)
 sign: $(LIB)
-	codesign --force --options runtime --sign "$(CODESIGN_IDENTITY)" pkg/lib/tree-sitter.so
+ifeq ($(TARGET_OS),darwin)
+	$(MACOS_SIGNING) sign pkg
 else
-sign: $(LIB)
-	@echo "Skipping codesign (host $(UNAME), target $(TARGET_OS))"
+	@echo "Skipping codesign (target $(TARGET_OS))"
 endif
 
 $(TAR): sign
 	cd pkg && tar -czvf ../$(TAR) .
 
-dist: $(TAR)
+# Checks the tarball itself, independently of how it was built: for darwin,
+# that tree-sitter.so is signed by $(TEAM_ID) and loads into a process signed
+# like Rune.app, and that every Mach-O file is intact and validly signed
+# (scripts/macos-signing.sh check).
+test: $(TAR)
+ifeq ($(TARGET_OS),darwin)
+	@d=$$(mktemp -d) && trap 'rm -rf "$$d"' EXIT && tar -xzf $(TAR) -C "$$d" && \
+		$(MACOS_SIGNING) check "$$d" tree_sitter_$(TARGET_LANG)
+endif
+
+dist: test
 	@ TARGET_OS=$(TARGET_OS) TARGET_ARCH=$(TARGET_ARCH) TARGET_LANG=$(TARGET_LANG) BLUE_RELEASE_TAR=$(TAR) ./dist.sh
 
-# Build and publish all four supported platforms in sequence.
-release-all:
+# Fail before any build work unless this host can sign macOS packages: macOS
+# and the Developer ID identity.
+check-macos:
+	@$(MACOS_SIGNING) preflight
+
+# Build and publish all four supported platforms in sequence. The darwin ones
+# need macOS, so this fails on Linux before building anything.
+release-all: check-macos
 	$(MAKE) dist TARGET_OS=darwin TARGET_ARCH=arm64
 	$(MAKE) dist TARGET_OS=darwin TARGET_ARCH=amd64
 	$(MAKE) dist TARGET_OS=linux  TARGET_ARCH=arm64
@@ -449,8 +471,15 @@ release-all:
 # Each target selects a committed bluectl config (prod|staging × os-arch) and
 # exports it as BLUECTL_CONFIG_DIR so dist.sh routes to the right GCP
 # project/bucket. Host-default variants build for the host os/arch; explicit
-# variants build the named os/arch (darwin targets require a macOS host).
+# variants build the named os/arch (darwin targets require a macOS host and
+# fail up front without one).
 # ============================================================================
+dist-all-prod-darwin-arm64 dist-all-staging-darwin-arm64 \
+dist-all-prod-darwin-amd64 dist-all-staging-darwin-amd64: check-macos
+ifeq ($(HOST_OS),darwin)
+dist-all-prod dist-all-staging: check-macos
+endif
+
 dist-all-prod:
 	@BLUECTL_CONFIG_DIR=$(call BLUECTL_CONFIG,prod,$(HOST_OS)-$(HOST_ARCH)) ./dist_all.sh $(HOST_OS) $(HOST_ARCH)
 dist-all-staging:
