@@ -24,11 +24,7 @@
 #   4. nvim-treesitter/runtime/queries/<lang>/<kind>.scm
 #
 # For inherited parents (e.g. ecma, jsx, html_tags) typically only
-# (4) applies because there is no `tree-sitter-<parent>` repo. The
-# exception is the multi-grammar tree-sitter-typescript repo: when
-# expanding the `typescript` parent, we prefer
-# `tree-sitter-typescript/queries/<kind>.scm` over the nvim-treesitter
-# copy if it exists, since the upstream is more authoritative.
+# (4) applies because there is no `tree-sitter-<parent>` repo.
 #
 # Inherits semantics match nvim-treesitter / neovim's tree-sitter
 # query loader: each `; inherits: a,b,...` line is replaced by the
@@ -73,16 +69,6 @@ resolve_file() {
     if [ "$is_primary" = "1" ] && [ -n "${PRIMARY_QUERY_DIR:-}" ]; then
         if [ -f "$PRIMARY_QUERY_DIR/$kind.scm" ]; then
             echo "$PRIMARY_QUERY_DIR/$kind.scm"
-            return 0
-        fi
-    fi
-
-    # Special case: tree-sitter-typescript ships authoritative queries
-    # at queries/<kind>.scm (no <lang> subdir). Honor it for the
-    # `typescript` parent (and `tsx`, though tsx normally hits case 1).
-    if [ "$L" = "typescript" ] || [ "$L" = "tsx" ]; then
-        if [ -f "tree-sitter-typescript/queries/$kind.scm" ]; then
-            echo "tree-sitter-typescript/queries/$kind.scm"
             return 0
         fi
     fi

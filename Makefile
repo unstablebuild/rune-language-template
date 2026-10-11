@@ -1,4 +1,4 @@
-TARGET_LANG ?= javascript
+TARGET_LANG ?= bash
 REPO ?= github.com:tree-sitter/tree-sitter-$(TARGET_LANG)
 UNAME := $(shell uname)
 CODESIGN_IDENTITY ?= Developer ID Application: Unstable Build, LLC. (YYZRWD888J)
@@ -203,15 +203,6 @@ endif
 ifeq ($(TARGET_LANG),php_only)
 REPO_DIR = tree-sitter-php
 PARSER_SOURCE = $(REPO_DIR)/php_only
-endif
-
-# tree-sitter-typescript: typescript, tsx
-ifeq ($(TARGET_LANG),typescript)
-PARSER_SOURCE = $(REPO_DIR)/typescript
-endif
-ifeq ($(TARGET_LANG),tsx)
-REPO_DIR = tree-sitter-typescript
-PARSER_SOURCE = $(REPO_DIR)/tsx
 endif
 
 # tree-sitter-fsharp: fsharp
