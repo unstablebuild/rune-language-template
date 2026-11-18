@@ -453,7 +453,7 @@ endif
 	@# #gsub!). Rune disables every pattern using a predicate it cannot
 	@# evaluate, which for an HTML-like language is the generic <script> and
 	@# <style> rules, so such a query is not shipped at all. Patch the file
-	@# that carries them (<parent>/queries/injections.scm, see html_tags)
+	@# that carries them (queries/<lang>/injections.scm, see html_tags)
 	@# rather than translating on the fly.
 	@if [ -f pkg/lib/injections.scm ] && grep -v '^[[:space:]]*;' pkg/lib/injections.scm | grep -Eq '#((any-)?(not-)?lua-match\?|gsub!)'; then \
 		echo "$(TARGET_LANG): injections.scm uses Lua predicates Rune cannot evaluate; not shipped" >&2; \
@@ -586,7 +586,7 @@ verify-locals:
 # Asserts that the package ships the injections query upstream has for it.
 # The build drops a query carrying Lua predicates Rune cannot evaluate, so
 # a language that inherits them loses its <script>/<style> rules silently
-# unless the file carrying them is patched (see html_tags/queries).
+# unless the file carrying them is patched (see queries/html_tags).
 # ============================================================================
 .PHONY: verify-injections
 verify-injections:
@@ -594,7 +594,7 @@ verify-injections:
 		echo "verify-injections: $(TARGET_LANG) ok"; \
 	elif PRIMARY_QUERY_DIR="$(QUERY_SOURCE)" tools/expand-inherits.sh injections $(TARGET_LANG) 2>/dev/null \
 			| grep -v '^[[:space:]]*;' | grep -Eq '#((any-)?(not-)?lua-match\?|gsub!)'; then \
-		echo "verify-injections: $(TARGET_LANG) upstream injections.scm uses Lua predicates Rune cannot evaluate; patch the file under <parent>/queries/injections.scm" >&2; \
+		echo "verify-injections: $(TARGET_LANG) upstream injections.scm uses Lua predicates Rune cannot evaluate; patch the file carrying them under queries/<lang>/injections.scm" >&2; \
 		exit 1; \
 	else \
 		echo "verify-injections: $(TARGET_LANG) has no injections.scm"; \

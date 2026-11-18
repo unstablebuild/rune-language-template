@@ -24,11 +24,16 @@
 #   4. nvim-treesitter/runtime/queries/<lang>/<kind>.scm
 #
 # For inherited parents (e.g. ecma, jsx, html_tags) typically only
-# (4) applies because there is no `tree-sitter-<parent>` repo. A parent
-# may instead be patched locally: <parent>/queries/<kind>.scm replaces
-# the upstream file for every language inheriting it. html_tags uses
-# this because its upstream injections are written with Neovim-only Lua
-# predicates (#lua-match?, #gsub!) that Rune cannot evaluate.
+# (4) applies because there is no `tree-sitter-<parent>` repo.
+#
+# Every step is preceded by queries/<lang>/<kind>.scm, a hand-patched copy
+# of an upstream query committed here. It replaces the upstream file
+# wherever <lang> is resolved: as the package being built (comment) or as
+# an inherited parent (html_tags, for every HTML-like language). Patches
+# exist because upstream writes some predicates for Neovim's Lua engine
+# (#lua-match?, #gsub!), which Rune does not evaluate. This is distinct
+# from <lang>/queries/<kind>.scm, which the Makefile appends to the query
+# of the package built for <lang>.
 #
 # Injections are the exception: (4) is tried first, for every language.
 # Their `; inherits:` chains and `injection.language` conventions are
@@ -75,10 +80,9 @@ resolve_file() {
     local L="$1"
     local is_primary="${2:-0}"
 
-    # (0) Inherited parent patched locally. The primary language's own
-    #     <lang>/queries/<kind>.scm is appended by the Makefile instead.
-    if [ "$is_primary" != "1" ] && [ -f "$L/queries/$kind.scm" ]; then
-        echo "$L/queries/$kind.scm"
+    # (0) Upstream query patched locally.
+    if [ -f "queries/$L/$kind.scm" ]; then
+        echo "queries/$L/$kind.scm"
         return 0
     fi
 
