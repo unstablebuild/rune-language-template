@@ -104,6 +104,7 @@ REPO_DIR       = tree-sitter-$(TARGET_LANG)
 PARSER_SOURCE  = $(REPO_DIR)
 NEEDS_GENERATE =
 EXTRA_CFLAGS   =
+EXTRA_SOURCES  =
 
 # ---------------------------------------------------------------------------
 # Category 1: Hyphen/underscore repo directory mismatches
@@ -233,6 +234,14 @@ endif
 ifeq ($(TARGET_LANG),markdown_inline)
 REPO_DIR = tree-sitter-markdown
 PARSER_SOURCE = $(REPO_DIR)/tree-sitter-markdown-inline
+endif
+# wield (Rune agent conversations) is the Markdown block grammar under its own
+# language ID, so it can ship its own queries without changing how .md files
+# highlight. The shim exports the tree_sitter_wield symbol Rune dlopens.
+ifeq ($(TARGET_LANG),wield)
+REPO_DIR = tree-sitter-markdown
+PARSER_SOURCE = $(REPO_DIR)/tree-sitter-markdown
+EXTRA_SOURCES = wield/shim.c
 endif
 
 # tree-sitter-jinja: jinja, jinja_inline
@@ -401,7 +410,7 @@ ifdef NEEDS_GENERATE
 		cp tree-sitter-bass/src/tree_sitter/array.h $(PARSER_SOURCE)/src/tree_sitter/array.h; \
 	fi
 endif
-	$(CC) -o $(REPO_DIR)/parser.so -I$(PARSER_SOURCE)/src $(PARSER_SOURCE)/src/*.c -Os $(EXTRA_CFLAGS) $(LD_FLAGS) $(ARCH_FLAGS)
+	$(CC) -o $(REPO_DIR)/parser.so -I$(PARSER_SOURCE)/src $(PARSER_SOURCE)/src/*.c $(EXTRA_SOURCES) -Os $(EXTRA_CFLAGS) $(LD_FLAGS) $(ARCH_FLAGS)
 	cp $(REPO_DIR)/parser.so pkg/lib/tree-sitter.so
 	@# Expand highlights — inlines any nvim-treesitter `; inherits:`
 	@# chain so the shipped query is self-contained. PRIMARY_QUERY_DIR
@@ -424,10 +433,32 @@ endif
 		|| rm -f pkg/lib/folds.scm
 	@PRIMARY_QUERY_DIR="$(QUERY_SOURCE)" tools/expand-inherits.sh locals  $(TARGET_LANG) > pkg/lib/locals.scm  2>/dev/null \
 		|| rm -f pkg/lib/locals.scm
+	@# Injections name the regions of a file written in another language,
+	@# which Rune parses with that language's package.
+	@PRIMARY_QUERY_DIR="$(QUERY_SOURCE)" tools/expand-inherits.sh injections $(TARGET_LANG) > pkg/lib/injections.scm 2>/dev/null \
+		|| rm -f pkg/lib/injections.scm
 	@-echo '\n\n# https://github.com/nvim-treesitter/nvim-treesitter\n' >> pkg/lib/LICENSE
 	@-cat nvim-treesitter/LICENSE >> pkg/lib/LICENSE
 	@# Copy any local query overrides
 	@-cp src/*.scm pkg/lib 2>/dev/null || true
+	@# Per-language local queries: $(TARGET_LANG)/queries/<kind>.scm is appended
+	@# to the expanded <kind> query of the grammar it builds on, or ships alone
+	@# when that grammar has none. Re-expanding keeps rebuilds idempotent.
+	@for f in $(wildcard $(TARGET_LANG)/queries/*.scm); do \
+		k=$$(basename $$f .scm); \
+		{ PRIMARY_QUERY_DIR="$(QUERY_SOURCE)" tools/expand-inherits.sh $$k $(TARGET_LANG) 2>/dev/null || true; \
+		  cat $$f; } > pkg/lib/$$k.scm; \
+	done
+	@# nvim-treesitter writes some injections predicates for Lua (#lua-match?,
+	@# #gsub!). Rune disables every pattern using a predicate it cannot
+	@# evaluate, which for an HTML-like language is the generic <script> and
+	@# <style> rules, so such a query is not shipped at all. Patch the file
+	@# that carries them (<parent>/queries/injections.scm, see html_tags)
+	@# rather than translating on the fly.
+	@if [ -f pkg/lib/injections.scm ] && grep -v '^[[:space:]]*;' pkg/lib/injections.scm | grep -Eq '#((any-)?(not-)?lua-match\?|gsub!)'; then \
+		echo "$(TARGET_LANG): injections.scm uses Lua predicates Rune cannot evaluate; not shipped" >&2; \
+		rm -f pkg/lib/injections.scm; \
+	fi
 
 sign: $(LIB)
 ifeq ($(TARGET_OS),darwin)
@@ -549,4 +580,22 @@ verify-locals:
 		exit 1; \
 	else \
 		echo "verify-locals: $(TARGET_LANG) ok"; \
+	fi
+
+# ============================================================================
+# Asserts that the package ships the injections query upstream has for it.
+# The build drops a query carrying Lua predicates Rune cannot evaluate, so
+# a language that inherits them loses its <script>/<style> rules silently
+# unless the file carrying them is patched (see html_tags/queries).
+# ============================================================================
+.PHONY: verify-injections
+verify-injections:
+	@if [ -f pkg/lib/injections.scm ]; then \
+		echo "verify-injections: $(TARGET_LANG) ok"; \
+	elif PRIMARY_QUERY_DIR="$(QUERY_SOURCE)" tools/expand-inherits.sh injections $(TARGET_LANG) 2>/dev/null \
+			| grep -v '^[[:space:]]*;' | grep -Eq '#((any-)?(not-)?lua-match\?|gsub!)'; then \
+		echo "verify-injections: $(TARGET_LANG) upstream injections.scm uses Lua predicates Rune cannot evaluate; patch the file under <parent>/queries/injections.scm" >&2; \
+		exit 1; \
+	else \
+		echo "verify-injections: $(TARGET_LANG) has no injections.scm"; \
 	fi

@@ -311,6 +311,7 @@ vrl=git@github.com:belltoy/tree-sitter-vrl.git
 vue=git@github.com:tree-sitter-grammars/tree-sitter-vue.git
 wgsl=git@github.com:szebniok/tree-sitter-wgsl.git
 wgsl_bevy=git@github.com:tree-sitter-grammars/tree-sitter-wgsl-bevy.git
+wield=git@github.com:tree-sitter-grammars/tree-sitter-markdown.git
 wing=git@github.com:winglang/tree-sitter-wing.git
 wit=git@github.com:bytecodealliance/tree-sitter-wit.git
 wxml=git@github.com:BlockLune/tree-sitter-wxml.git

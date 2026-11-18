@@ -6,7 +6,7 @@
 # Usage:
 #   tools/expand-inherits.sh <kind> <lang>
 #
-# Where <kind> is one of: highlights | indents | folds | locals
+# Where <kind> is one of: highlights | indents | folds | locals | injections
 # and <lang> is a tree-sitter / nvim-treesitter language id (e.g. tsx).
 #
 # The resolved, concatenated query is printed to stdout. The script
@@ -24,7 +24,17 @@
 #   4. nvim-treesitter/runtime/queries/<lang>/<kind>.scm
 #
 # For inherited parents (e.g. ecma, jsx, html_tags) typically only
-# (4) applies because there is no `tree-sitter-<parent>` repo.
+# (4) applies because there is no `tree-sitter-<parent>` repo. A parent
+# may instead be patched locally: <parent>/queries/<kind>.scm replaces
+# the upstream file for every language inheriting it. html_tags uses
+# this because its upstream injections are written with Neovim-only Lua
+# predicates (#lua-match?, #gsub!) that Rune cannot evaluate.
+#
+# Injections are the exception: (4) is tried first, for every language.
+# Their `; inherits:` chains and `injection.language` conventions are
+# nvim-treesitter's, which is also where fixes land first
+# (tree-sitter-svelte, for one, still injects javascript into every
+# raw_text, <style> included).
 #
 # Inherits semantics match nvim-treesitter / neovim's tree-sitter
 # query loader: each `; inherits: a,b,...` line is replaced by the
@@ -64,6 +74,18 @@ visited="${EXPAND_INHERITS_VISITED:-}"
 resolve_file() {
     local L="$1"
     local is_primary="${2:-0}"
+
+    # (0) Inherited parent patched locally. The primary language's own
+    #     <lang>/queries/<kind>.scm is appended by the Makefile instead.
+    if [ "$is_primary" != "1" ] && [ -f "$L/queries/$kind.scm" ]; then
+        echo "$L/queries/$kind.scm"
+        return 0
+    fi
+
+    if [ "$kind" = "injections" ] && [ -f "nvim-treesitter/runtime/queries/$L/$kind.scm" ]; then
+        echo "nvim-treesitter/runtime/queries/$L/$kind.scm"
+        return 0
+    fi
 
     # (1) Top-level language: trust the Makefile's QUERY_SOURCE.
     if [ "$is_primary" = "1" ] && [ -n "${PRIMARY_QUERY_DIR:-}" ]; then
