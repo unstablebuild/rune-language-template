@@ -3,6 +3,8 @@
 # Format: <lang>=<git ssh url>, one per line. Blank lines and lines starting
 # with '#' are ignored.
 #
+# Every language here also needs a row in comments.yaml, or its build fails.
+#
 # The list is derived from nvim-treesitter's SUPPORTED_LANGUAGES.md. GPL
 # licensed grammars are deliberately absent:
 #   supercollider=git@github.com:madskjeldgaard/tree-sitter-supercollider.git

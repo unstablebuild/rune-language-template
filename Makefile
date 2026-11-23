@@ -78,7 +78,7 @@ TREE_SITTER := $(shell \
 # helpful install hint instead of a raw "command not found".
 CC_PATH := $(shell command -v $(firstword $(CC)) 2>/dev/null)
 
-.PHONY: dist clean default sign test check-macos release-all \
+.PHONY: dist clean default sign config test check-macos release-all \
 	dist-all-prod dist-all-staging \
 	dist-all-prod-darwin-arm64 dist-all-staging-darwin-arm64 \
 	dist-all-prod-darwin-amd64 dist-all-staging-darwin-amd64 \
@@ -467,7 +467,15 @@ else
 	@echo "Skipping codesign (target $(TARGET_OS))"
 endif
 
-$(TAR): sign
+# Rune's comment commands do nothing for a language until its config sets
+# editor.comments, so the package's config.yaml carries its row of
+# comments.yaml. A language without comments ships no config.yaml.
+config:
+	@mkdir -p pkg
+	@tools/comments-config.sh $(TARGET_LANG) > pkg/config.yaml || { rm -f pkg/config.yaml; false; }
+	@[ -s pkg/config.yaml ] || rm -f pkg/config.yaml
+
+$(TAR): sign config
 	cd pkg && tar -czvf ../$(TAR) .
 
 # Checks the tarball itself, independently of how it was built: for darwin,

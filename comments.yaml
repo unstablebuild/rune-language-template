@@ -1,0 +1,327 @@
+# Comment tokens of every language package. The build copies the row of
+# TARGET_LANG into the package's config.yaml as editor.comments, which Rune
+# needs to toggle comments: without it the comment commands do nothing.
+#
+# Every language in languages.txt needs exactly one row, on one line, in
+# the editor.comments schema:
+#
+#   <lang>: {line: [<prefix>, ...], block: [<start>, <end>, ...]}
+#
+# The first line prefix and the first block pair are the ones Rune inserts;
+# the other prefixes are also removed when uncommenting. Rune tries the
+# prefixes in order, so list a prefix before any shorter one it starts with.
+# Rune follows a line prefix with a space but inserts block delimiters as
+# they are, so a delimiter that must be a separate word carries its space.
+# Rune only removes text the grammar's highlights capture as @comment, and a
+# block pair only when that capture spans both delimiters, so a pair the
+# grammar does not parse as one comment node (Go templates' {{/* */}}, MDX's
+# {/* */}) is left out. A language with no comment syntax, or none Rune can
+# toggle, gets {} and ships no config.yaml.
+ada: {line: ['--']}
+agda: {line: ['--'], block: ['{-', '-}']}
+angular: {block: ['<!--', '-->']}
+apex: {line: ['//'], block: ['/*', '*/']}
+arduino: {line: ['//'], block: ['/*', '*/']}
+asm: {line: [';', '#', '//'], block: ['/*', '*/']}
+astro: {block: ['<!--', '-->']}
+authzed: {line: ['//'], block: ['/*', '*/']}
+awk: {line: ['#']}
+bash: {line: ['#']}
+bass: {line: [';']}
+beancount: {line: [';']}
+bibtex: {line: ['%']}
+bicep: {line: ['//'], block: ['/*', '*/']}
+bitbake: {line: ['#']}
+blade: {block: ['{{--', '--}}']}
+bp: {line: ['//'], block: ['/*', '*/']}
+bpftrace: {line: ['//'], block: ['/*', '*/']}
+brightscript: {line: ['''']}
+c3: {line: ['//'], block: ['/*', '*/']}
+c_sharp: {line: ['//'], block: ['/*', '*/']}
+caddy: {line: ['#']}
+cairo: {line: ['//']}
+capnp: {line: ['#']}
+chatito: {line: ['//', '#']}
+circom: {line: ['//'], block: ['/*', '*/']}
+clojure: {line: [';']}
+cmake: {line: ['#'], block: ['#[[', ']]']}
+comment: {}
+commonlisp: {line: [';'], block: ['#|', '|#']}
+cooklang: {line: ['--'], block: ['[-', '-]']}
+corn: {line: ['//']}
+cpon: {line: ['//'], block: ['/*', '*/']}
+css: {block: ['/*', '*/']}
+csv: {}
+cuda: {line: ['//'], block: ['/*', '*/']}
+cue: {line: ['//']}
+cylc: {line: ['#']}
+d: {line: ['//'], block: ['/*', '*/']}
+dart: {line: ['//'], block: ['/*', '*/']}
+desktop: {line: ['#']}
+devicetree: {line: ['//'], block: ['/*', '*/']}
+dhall: {line: ['--'], block: ['{-', '-}']}
+diff: {line: ['#']}
+disassembly: {}
+djot: {block: ['{%', '%}']}
+dockerfile: {line: ['#']}
+dot: {line: ['//'], block: ['/*', '*/']}
+doxygen: {}
+dtd: {block: ['<!--', '-->']}
+earthfile: {line: ['#']}
+ebnf: {block: ['(*', '*)']}
+editorconfig: {line: ['#', ';']}
+eds: {line: [';']}
+eex: {block: ['<%!--', '--%>', '<%#', '%>']}
+elixir: {line: ['#']}
+elm: {line: ['--'], block: ['{-', '-}']}
+elsa: {line: ['--']}
+elvish: {line: ['#']}
+embedded_template: {block: ['<%#', '%>']}
+enforce: {line: ['//'], block: ['/*', '*/']}
+erlang: {line: ['%%', '%']}
+facility: {line: ['//']}
+faust: {line: ['//'], block: ['/*', '*/']}
+fennel: {line: [';']}
+fidl: {line: ['//']}
+firrtl: {line: [';']}
+fish: {line: ['#']}
+forth: {line: ['\'], block: ['( ', ' )']}
+fortran: {line: ['!']}
+fsh: {line: ['//'], block: ['/*', '*/']}
+fsharp: {line: ['//'], block: ['(*', '*)']}
+func: {line: [';;'], block: ['{-', '-}']}
+gap: {line: ['#']}
+gaptst: {line: ['#']}
+gdscript: {line: ['#']}
+gdshader: {line: ['//'], block: ['/*', '*/']}
+git_config: {line: ['#', ';']}
+git_rebase: {line: ['#']}
+gitattributes: {line: ['#']}
+gitcommit: {line: ['#']}
+gitignore: {line: ['#']}
+gleam: {line: ['//']}
+glimmer: {block: ['{{!--', '--}}', '{{!', '}}']}
+glimmer_javascript: {line: ['//'], block: ['/*', '*/']}
+glimmer_typescript: {line: ['//'], block: ['/*', '*/']}
+glsl: {line: ['//'], block: ['/*', '*/']}
+gn: {line: ['#']}
+gnuplot: {line: ['#']}
+goctl: {line: ['//'], block: ['/*', '*/']}
+godot_resource: {line: [';']}
+gomod: {line: ['//']}
+gosum: {}
+gotmpl: {}
+gowork: {line: ['//']}
+gpg: {line: ['#']}
+graphql: {line: ['#']}
+gren: {line: ['--'], block: ['{-', '-}']}
+groovy: {line: ['//'], block: ['/*', '*/']}
+groq: {line: ['//']}
+gstlaunch: {}
+hack: {line: ['//'], block: ['/*', '*/']}
+hare: {line: ['//']}
+haskell: {line: ['--'], block: ['{-', '-}']}
+haskell_persistent: {line: ['--']}
+hcl: {line: ['#', '//'], block: ['/*', '*/']}
+heex: {block: ['<%!--', '--%>', '<!--', '-->', '<%#', '%>']}
+helm: {line: ['#']}
+hjson: {line: ['#', '//'], block: ['/*', '*/']}
+hlsl: {line: ['//'], block: ['/*', '*/']}
+hocon: {line: ['#', '//']}
+hoon: {line: ['::']}
+html: {block: ['<!--', '-->']}
+htmldjango: {block: ['{#', '#}']}
+http: {line: ['#', '//']}
+hurl: {line: ['#']}
+hyprlang: {line: ['#']}
+idl: {line: ['//'], block: ['/*', '*/']}
+idris: {line: ['--'], block: ['{-', '-}']}
+ini: {line: [';', '#']}
+inko: {line: ['#']}
+ispc: {line: ['//'], block: ['/*', '*/']}
+janet_simple: {line: ['#']}
+java: {line: ['//'], block: ['/*', '*/']}
+javadoc: {}
+jinja: {block: ['{#', '#}']}
+jinja_inline: {}
+jq: {line: ['#']}
+jsdoc: {}
+json: {}
+json5: {line: ['//'], block: ['/*', '*/']}
+jsonnet: {line: ['//', '#'], block: ['/*', '*/']}
+julia: {line: ['#'], block: ['#=', '=#']}
+just: {line: ['#']}
+kcl: {line: ['#']}
+kconfig: {line: ['#']}
+kdl: {line: ['//'], block: ['/*', '*/']}
+kos: {line: ['//']}
+kotlin: {line: ['//'], block: ['/*', '*/']}
+koto: {line: ['#'], block: ['#-', '-#']}
+kusto: {line: ['//']}
+lalrpop: {line: ['//']}
+latex: {line: ['%']}
+ledger: {line: [';']}
+linkerscript: {block: ['/*', '*/']}
+liquid: {block: ['{% comment %}', '{% endcomment %}']}
+llvm: {line: [';']}
+lua: {line: ['--'], block: ['--[[', ']]']}
+luadoc: {}
+luap: {}
+luau: {line: ['--'], block: ['--[[', ']]']}
+m68k: {line: [';']}
+make: {line: ['#']}
+markdown: {block: ['<!--', '-->']}
+markdown_inline: {}
+matlab: {line: ['%']}
+mdx: {}
+menhir: {line: ['//'], block: ['/*', '*/', '(*', '*)']}
+mermaid: {line: ['%%']}
+meson: {line: ['#']}
+mlir: {line: ['//']}
+nasm: {line: [';']}
+nginx: {line: ['#']}
+nickel: {line: ['#']}
+nim: {line: ['#'], block: ['#[', ']#']}
+nim_format_string: {}
+ninja: {line: ['#']}
+nix: {line: ['#'], block: ['/*', '*/']}
+nqc: {line: ['//'], block: ['/*', '*/']}
+nu: {line: ['#']}
+objc: {line: ['//'], block: ['/*', '*/']}
+objdump: {}
+ocaml: {block: ['(*', '*)']}
+ocaml_interface: {block: ['(*', '*)']}
+ocamllex: {block: ['(*', '*)']}
+odin: {line: ['//'], block: ['/*', '*/']}
+pascal: {line: ['//'], block: ['{', '}', '(*', '*)']}
+passwd: {}
+pem: {}
+perl: {line: ['#']}
+php: {line: ['//', '#'], block: ['/*', '*/']}
+php_only: {line: ['//', '#'], block: ['/*', '*/']}
+phpdoc: {}
+pioasm: {line: [';', '//'], block: ['/*', '*/']}
+pkl: {line: ['//'], block: ['/*', '*/']}
+po: {line: ['#']}
+pod: {}
+poe_filter: {line: ['#']}
+pony: {line: ['//'], block: ['/*', '*/']}
+powershell: {line: ['#'], block: ['<#', '#>']}
+printf: {}
+prisma: {line: ['//']}
+problog: {line: ['%'], block: ['/*', '*/']}
+prolog: {line: ['%'], block: ['/*', '*/']}
+promql: {line: ['#']}
+properties: {line: ['#', '!']}
+proto: {line: ['//'], block: ['/*', '*/']}
+prql: {line: ['#']}
+psv: {}
+pug: {line: ['//-', '//']}
+puppet: {line: ['#'], block: ['/*', '*/']}
+purescript: {line: ['--'], block: ['{-', '-}']}
+pymanifest: {line: ['#']}
+ql: {line: ['//'], block: ['/*', '*/']}
+qmldir: {line: ['#']}
+qmljs: {line: ['//'], block: ['/*', '*/']}
+query: {line: [';']}
+r: {line: ['#']}
+racket: {line: [';'], block: ['#|', '|#']}
+rasi: {line: ['//'], block: ['/*', '*/']}
+razor: {block: ['@*', '*@']}
+rbs: {line: ['#']}
+re2c: {line: ['//'], block: ['/*', '*/']}
+readline: {line: ['#']}
+regex: {}
+rego: {line: ['#']}
+requirements: {line: ['#']}
+rescript: {line: ['//'], block: ['/*', '*/']}
+rifleconf: {line: ['#']}
+rnoweb: {line: ['%']}
+robot: {line: ['#']}
+robots_txt: {line: ['#']}
+roc: {line: ['#']}
+ron: {line: ['//'], block: ['/*', '*/']}
+rst: {line: ['..']}
+ruby: {line: ['#']}
+runescript: {line: ['//'], block: ['/*', '*/']}
+scala: {line: ['//'], block: ['/*', '*/']}
+scfg: {line: ['#']}
+scheme: {line: [';'], block: ['#|', '|#']}
+scss: {line: ['//'], block: ['/*', '*/']}
+sflog: {}
+slang: {line: ['//'], block: ['/*', '*/']}
+slim: {line: ['/']}
+slint: {line: ['//'], block: ['/*', '*/']}
+smali: {line: ['#']}
+smithy: {line: ['//']}
+snakemake: {line: ['#']}
+snl: {line: ['//'], block: ['/*', '*/']}
+solidity: {line: ['//'], block: ['/*', '*/']}
+soql: {}
+sosl: {}
+sourcepawn: {line: ['//'], block: ['/*', '*/']}
+sparql: {line: ['#']}
+sproto: {line: ['#']}
+sql: {line: ['--'], block: ['/*', '*/']}
+squirrel: {line: ['//', '#'], block: ['/*', '*/']}
+ssh_config: {line: ['#']}
+starlark: {line: ['#']}
+strace: {}
+styled: {block: ['/*', '*/']}
+superhtml: {block: ['<!--', '-->']}
+surface: {block: ['{!--', '--}', '<!--', '-->']}
+svelte: {block: ['<!--', '-->']}
+sway: {line: ['//'], block: ['/*', '*/']}
+swift: {line: ['//'], block: ['/*', '*/']}
+sxhkdrc: {line: ['#']}
+systemtap: {line: ['#', '//'], block: ['/*', '*/']}
+systemverilog: {line: ['//'], block: ['/*', '*/']}
+t32: {line: [';']}
+tablegen: {line: ['//'], block: ['/*', '*/']}
+tact: {line: ['//'], block: ['/*', '*/']}
+tcl: {line: ['#']}
+teal: {line: ['--'], block: ['--[[', ']]']}
+templ: {line: ['//'], block: ['/*', '*/']}
+tera: {block: ['{#', '#}']}
+terraform: {line: ['#', '//'], block: ['/*', '*/']}
+textproto: {line: ['#']}
+thrift: {line: ['//'], block: ['/*', '*/']}
+tiger: {block: ['/*', '*/']}
+tlaplus: {line: ['\*'], block: ['(*', '*)']}
+todotxt: {}
+toml: {line: ['#']}
+tsv: {}
+turtle: {line: ['#']}
+twig: {block: ['{#', '#}']}
+typespec: {line: ['//'], block: ['/*', '*/']}
+typoscript: {line: ['#', '//'], block: ['/*', '*/']}
+typst: {line: ['//'], block: ['/*', '*/']}
+udev: {line: ['#']}
+ungrammar: {line: ['//']}
+unison: {line: ['--'], block: ['{-', '-}']}
+usd: {line: ['#', '//']}
+uxntal: {block: ['( ', ' )']}
+v: {line: ['//'], block: ['/*', '*/']}
+vala: {line: ['//'], block: ['/*', '*/']}
+vento: {block: ['{{#', '#}}']}
+vhdl: {line: ['--'], block: ['/*', '*/']}
+vhs: {line: ['#']}
+vim: {line: ['"']}
+vimdoc: {}
+vrl: {line: ['#']}
+vue: {block: ['<!--', '-->']}
+wgsl: {line: ['//'], block: ['/*', '*/']}
+wgsl_bevy: {line: ['//'], block: ['/*', '*/']}
+wield: {block: ['<!--', '-->']}
+wing: {line: ['//'], block: ['/*', '*/']}
+wit: {line: ['//'], block: ['/*', '*/']}
+wxml: {block: ['<!--', '-->']}
+xcompose: {line: ['#']}
+xml: {block: ['<!--', '-->']}
+xresources: {line: ['!']}
+yaml: {line: ['#']}
+yang: {line: ['//'], block: ['/*', '*/']}
+yuck: {line: [';']}
+ziggy: {line: ['//']}
+ziggy_schema: {}
+zsh: {line: ['#']}
