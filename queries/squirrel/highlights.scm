@@ -1,0 +1,365 @@
+; Highlights for Squirrel, written by hand from tree-sitter-squirrel's
+; queries/highlights.scm (MIT). Upstream uses Neovim's `#lua-match?` and
+; `#not-has-ancestor?`, which Rune does not evaluate, so each pattern would
+; apply to every node it structurally matches. The `#lua-match?` predicates are
+; now `#match?` with the same patterns in RE2; the documentation-comment one
+; sets the `s` flag so that `.` also spans the lines of a block comment, as
+; Lua's `.` does. The @function pattern excluded methods with
+; `#not-has-ancestor? member_declaration`; it now lists the other parents a
+; function_declaration can have in tree-sitter-squirrel's node-types.json.
+; Kept without the predicate, it would paint every method over the @method
+; pattern before it. The one difference from upstream: a function declared
+; inside a method body now gets @function, where upstream left it unpainted.
+; Keep the patterns in upstream's order; only these predicates differ.
+
+; Keywords
+
+[
+  "class"
+  "clone"
+  "delete"
+  "enum"
+  "extends"
+  "rawcall"
+  "resume"
+  "var"
+] @keyword
+
+[
+  "function"
+] @keyword.function
+
+[
+  "in"
+  "instanceof"
+  "typeof"
+] @keyword.operator
+
+[
+  "return"
+  "yield"
+] @keyword.return
+
+((global_variable
+   "::"
+   (_) @keyword.coroutine)
+  (#any-of? @keyword.coroutine "suspend" "newthread"))
+
+; Conditionals
+
+[
+  "if"
+  "else"
+  "switch"
+  "case"
+  "default"
+  "break"
+] @conditional
+
+; Repeats
+
+[
+  "for"
+  "foreach"
+  "do"
+  "while"
+  "continue"
+] @repeat
+
+; Exceptions
+
+[
+  "try"
+  "catch"
+  "throw"
+] @exception
+
+; Storageclasses
+
+[
+  "local"
+] @storageclass
+
+; Qualifiers
+
+[
+  "static"
+  "const"
+] @type.qualifier
+
+; Variables
+
+(identifier) @variable 
+
+(local_declaration
+  (identifier) @variable.local
+  . "=")
+
+
+(global_variable) @variable.global
+
+((identifier) @variable.builtin
+  (#any-of? @variable.builtin "base" "this" "vargv"))
+
+; Parameters
+
+(parameter
+  . (identifier) @parameter)
+
+; Properties (Slots)
+
+(deref_expression
+  "."
+  . (identifier) @property)
+
+(member_declaration
+  (identifier) @property
+  . "=")
+
+((table_slot
+  . (identifier) @property
+  . ["=" ":"])
+  (#set! "priority" 105))
+
+; Types
+
+((identifier) @type
+ (#match? @type "^[A-Z]"))
+
+(class_declaration
+  (identifier) @type
+  "extends"? . (identifier)? @type)
+
+(enum_declaration
+  (identifier) @type)
+
+; Attributes
+
+(attribute_declaration
+  left: (identifier) @attribute)
+
+; Functions & Methods
+
+(member_declaration
+  (function_declaration
+    "::"? (_) @method . "(" (_)? ")"))
+
+[
+  (anonymous_function
+    (function_declaration
+      "::"? (_) @function . "(" (_)? ")"))
+  (block
+    (function_declaration
+      "::"? (_) @function . "(" (_)? ")"))
+  (case_statement
+    (function_declaration
+      "::"? (_) @function . "(" (_)? ")"))
+  (catch_statement
+    (function_declaration
+      "::"? (_) @function . "(" (_)? ")"))
+  (default_statement
+    (function_declaration
+      "::"? (_) @function . "(" (_)? ")"))
+  (do_while_statement
+    (function_declaration
+      "::"? (_) @function . "(" (_)? ")"))
+  (else_statement
+    (function_declaration
+      "::"? (_) @function . "(" (_)? ")"))
+  (for_statement
+    (function_declaration
+      "::"? (_) @function . "(" (_)? ")"))
+  (foreach_statement
+    (function_declaration
+      "::"? (_) @function . "(" (_)? ")"))
+  (function_declaration
+    (function_declaration
+      "::"? (_) @function . "(" (_)? ")"))
+  (if_statement
+    (function_declaration
+      "::"? (_) @function . "(" (_)? ")"))
+  (script
+    (function_declaration
+      "::"? (_) @function . "(" (_)? ")"))
+  (table_slot
+    (function_declaration
+      "::"? (_) @function . "(" (_)? ")"))
+  (try_statement
+    (function_declaration
+      "::"? (_) @function . "(" (_)? ")"))
+  (while_statement
+    (function_declaration
+      "::"? (_) @function . "(" (_)? ")"))
+]
+
+(call_expression
+  function: (identifier) @function.call)
+
+(call_expression
+  function: (deref_expression
+    "." . (identifier) @function.call))
+
+(call_expression
+  (global_variable
+    "::"
+    (_) @function.call))
+
+(_
+  (identifier) @function
+  "="
+  (lambda_expression
+    "@" @symbol))
+
+(call_expression 
+  [
+   function: (identifier) @function.builtin
+   function: (global_variable "::" (_) @function.builtin)
+   function: (deref_expression "." (_) @function.builtin)
+  ]
+  (#any-of? @function.builtin
+   ; General Methods
+   "assert" "array" "callee" "collectgarbage" "compilestring"
+   "enabledebughook" "enabledebuginfo" "error" "getconsttable"
+   "getroottable" "print" "resurrectunreachable" "setconsttable"
+   "setdebughook" "seterrorhandler" "setroottable" "type"
+
+   ; Hidden Methods
+   "_charsize_" "_intsize_" "_floatsize_" "_version_" "_versionnumber_"
+
+   ; Number Methods
+   "tofloat" "tostring" "tointeger" "tochar"
+
+   ; String Methods
+   "len" "slice" "find" "tolower" "toupper"
+
+   ; Table Methods
+   "rawget" "rawset" "rawdelete" "rawin" "clear" 
+   "setdelegate" "getdelegate" "filter" "keys" "values"
+
+   ; Array Methods
+   "append" "push" "extend" "pop" "top" "insert" "remove" "resize" "sort"
+   "reverse" "map" "apply" "reduce"
+
+   ; Function Methods
+   "call" "pcall" "acall" "pacall" "setroot" "getroot" "bindenv" "getinfos"
+
+   ; Class Methods
+   "instance" "getattributes" "setattributes" "newmember" "rawnewmember"
+
+   ; Class Instance Methods
+   "getclass"
+
+   ; Generator Methods
+   "getstatus"
+
+   ; Thread Methods
+   "call" "wakeup" "wakeupthrow" "getstackinfos"
+
+   ; Weak Referece Methods
+   "ref" "weakref"
+))
+
+(member_declaration
+  "constructor" @constructor)
+
+; Constants
+
+(const_declaration
+  "const"
+  . (identifier) @constant)
+
+(enum_declaration
+  "{"
+  . (identifier) @constant)
+
+((identifier) @constant
+ (#match? @constant "^_*[A-Z][A-Z0-9_]*$"))
+
+; Operators
+
+[
+  "+"
+  "-"
+  "*"
+  "/"
+  "%"
+  "||"
+  "&&"
+  "|"
+  "^"
+  "&"
+  "=="
+  "!="
+  "<=>"
+  ">"
+  ">="
+  "<="
+  "<"
+  "<<"
+  ">>"
+  ">>>"
+  "="
+  "<-"
+  "+="
+  "-="
+  "*="
+  "/="
+  "%="
+  "~"
+  "!"
+  "++"
+  "--"
+] @operator
+
+; Punctuation
+
+[ "{" "}" ] @punctuation.bracket
+
+[ "[" "]" ] @punctuation.bracket
+
+[ "(" ")" ] @punctuation.bracket
+
+[ "</" "/>" ] @punctuation.bracket
+
+[
+  "."
+  ","
+  ";"
+  ":"
+] @punctuation.delimiter
+
+[
+  "::"
+  "..."
+] @punctuation.special
+
+; Ternaries
+
+(ternary_expression
+  "?" @conditional.ternary
+  ":" @conditional.ternary)
+
+; Literals
+
+(string) @string
+
+(verbatim_string) @string.special
+
+(char) @character
+
+(escape_sequence) @string.escape
+
+(integer) @number
+
+(float) @float
+
+(bool) @boolean
+
+(null) @constant.builtin
+
+; Comments
+
+(comment) @comment @spell
+
+((comment) @comment.documentation
+  (#match? @comment.documentation "(?s)^/[*][*][^*].*[*]/$"))
