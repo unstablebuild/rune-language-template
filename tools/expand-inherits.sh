@@ -30,10 +30,13 @@
 # of an upstream query committed here. It replaces the upstream file
 # wherever <lang> is resolved: as the package being built (comment) or as
 # an inherited parent (html_tags, for every HTML-like language). Patches
-# exist because upstream writes some predicates for Neovim's Lua engine
-# (#lua-match?, #gsub!), which Rune does not evaluate. This is distinct
-# from <lang>/queries/<kind>.scm, which the Makefile appends to the query
-# of the package built for <lang>.
+# exist where an upstream query does not load in Rune as written: it uses
+# predicates Rune does not evaluate (Neovim's #lua-match?, #gsub!,
+# #has-ancestor?, #not-kind-eq? and the like, or tree-sitter-highlight's
+# #is-not? local), or it does not compile against the grammar built here.
+# `make verify-queries` reports both. This is distinct from
+# <lang>/queries/<kind>.scm, which the Makefile appends to the query of
+# the package built for <lang>.
 #
 # Injections are the exception: (4) is tried first, for every language.
 # Their `; inherits:` chains and `injection.language` conventions are

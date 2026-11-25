@@ -481,8 +481,8 @@ $(TAR): sign config
 # Checks the tarball itself, independently of how it was built: for darwin,
 # that tree-sitter.so is signed by $(TEAM_ID) and loads into a process signed
 # like Rune.app, and that every Mach-O file is intact and validly signed
-# (scripts/macos-signing.sh check).
-test: $(TAR)
+# (scripts/macos-signing.sh check). verify-queries checks the queries it ships.
+test: $(TAR) verify-queries
 ifeq ($(TARGET_OS),darwin)
 	@d=$$(mktemp -d) && trap 'rm -rf "$$d"' EXIT && tar -xzf $(TAR) -C "$$d" && \
 		$(MACOS_SIGNING) check "$$d" tree_sitter_$(TARGET_LANG)
@@ -607,3 +607,24 @@ verify-injections:
 	else \
 		echo "verify-injections: $(TARGET_LANG) has no injections.scm"; \
 	fi
+
+# ============================================================================
+# Asserts that every query in pkg/lib loads in Rune. tools/verify-queries
+# compiles each one against pkg/lib/tree-sitter.so with the go-tree-sitter
+# Rune links, and fails on a query that does not compile, on one that trips
+# an assertion in tree-sitter (which takes Rune down), and on a predicate
+# Rune leaves unevaluated, whose pattern then matches everything it
+# structurally can. Patch the upstream file that fails under
+# queries/<lang>/<kind>.scm (see tools/expand-inherits.sh).
+#
+# A parser only loads on the platform it was built for, so cross builds skip
+# the check. Queries do not depend on the platform, and release-all builds
+# the host's platform too.
+# ============================================================================
+.PHONY: verify-queries
+verify-queries: $(LIB)
+ifeq ($(TARGET_OS)/$(TARGET_ARCH),$(HOST_OS)/$(HOST_ARCH))
+	cd tools/verify-queries && go run . $(abspath pkg/lib) $(TARGET_LANG)
+else
+	@echo "verify-queries: skipped; $(TARGET_OS)/$(TARGET_ARCH) parsers do not load on this $(HOST_OS)/$(HOST_ARCH) host"
+endif
